@@ -19,8 +19,7 @@ const { randomUUID } = require('crypto');
   -------------
   SQUARE SDK SETUP (UPDATED FOR v42+)
   -------------
-  Import SquareClient instead of Client.
-  Pass the environment as a string ("production" or "sandbox").
+  Import SquareClient from 'square' and pass the environment as a string.
 */
 const { SquareClient, ApiError } = require('square');
 
@@ -29,13 +28,13 @@ const { SquareClient, ApiError } = require('square');
 */
 const isProd = process.env.NODE_ENV === 'production';
 
-// Initialize the Square client using the new class and endpoint structure.
+// Initialize the Square client using the new class.
 const squareClient = new SquareClient({
   accessToken: process.env.SQUARE_ACCESS_TOKEN,
   environment: isProd ? "production" : "sandbox",
 });
 
-// (No separate paymentsApi; endpoints are now under squareClient.payments)
+// Use the paymentsApi endpoint.
 const locationId = process.env.SQUARE_LOCATION_ID; // keep your location ID
 
 // ------------------------------------------------------
@@ -500,7 +499,7 @@ app.post('/api/fb-conversion', async (req, res, next) => {
     // Retrieve the Square payment to ensure it's completed
     let paymentStatus = null;
     try {
-      const { result } = await squareClient.payments.getPayment(row.payment_id);
+      const { result } = await squareClient.paymentsApi.getPayment(row.payment_id);
       if (result && result.payment && result.payment.status) {
         paymentStatus = result.payment.status; // e.g. "COMPLETED"
       }
@@ -645,8 +644,8 @@ app.post('/process-square-payment', async (req, res) => {
       },
     };
 
-    // Create the payment using the new endpoint
-    const { result } = await squareClient.payments.createPayment(paymentRequest);
+    // Create the payment using the correct endpoint.
+    const { result } = await squareClient.paymentsApi.createPayment(paymentRequest);
     const payment = result.payment;
 
     // Insert donation record
@@ -686,7 +685,7 @@ app.post('/process-square-payment', async (req, res) => {
   } catch (error) {
     console.error('Payment Error:', error);
 
-    // Instead of using instanceof, check if error has an errors property
+    // Instead of using instanceof, check if error has an errors property.
     if (error && error.errors) {
       console.error('Square API Errors:', error.errors);
     }
@@ -813,7 +812,7 @@ app.get('/admin-api/donations', isAuthenticated, async (req, res, next) => {
       if (donation.payment_status && donation.payment_status !== 'COMPLETED') {
         if (donation.payment_id) {
           try {
-            const { result } = await squareClient.payments.getPayment(donation.payment_id);
+            const { result } = await squareClient.paymentsApi.getPayment(donation.payment_id);
             const sqPayment = result && result.payment ? result.payment : null;
             if (
               sqPayment &&
