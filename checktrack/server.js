@@ -215,7 +215,7 @@ async function sendFacebookConversionEvent(donationRow) {
     user_data: userData,
     custom_data: {
       value: donationRow.donation_amount ? donationRow.donation_amount / 100 : 0,
-      currency: 'USD',
+      currency: 'EUR',
     },
   };
 
@@ -570,7 +570,7 @@ app.post('/create-payment-intent', async (req, res, next) => {
     // Create Stripe PaymentIntent
     const paymentIntent = await stripeInstance.paymentIntents.create({
       amount: amountCents,
-      currency: 'usd',
+      currency: 'eur',
       receipt_email: email,
     });
 
