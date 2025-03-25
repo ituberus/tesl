@@ -2,9 +2,6 @@
   "name": "square-donation-integration",
   "version": "1.0.0",
   "description": "Example of integrating Square Web Payments SDK with a custom donation form.",
-  "engines": {
-    "node": "18.20.5"
-  },
   "main": "server.js",
   "scripts": {
     "start": "node server.js"
