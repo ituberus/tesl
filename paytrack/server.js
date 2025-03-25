@@ -18,11 +18,10 @@ const { randomUUID } = require('crypto');
 // ---------------------------
 // SQUARE SDK SETUP
 // ---------------------------
-const { Client, Environment, ApiError } = require('square');
+const { Client, ApiError } = require('square');
 
 const squareClient = new Client({
-  environment:
-    process.env.NODE_ENV === 'production' ? Environment.Production : Environment.Sandbox,
+  environment: process.env.NODE_ENV === 'production' ? 'production' : 'sandbox',
   accessToken: process.env.SQUARE_ACCESS_TOKEN,
 });
 
@@ -876,6 +875,4 @@ process.on('uncaughtException', (err) => {
 app.listen(PORT, () => {
   console.log('NODE_ENV:', process.env.NODE_ENV);
   console.log(`Server running on port ${PORT}`);
-  
-
 });
