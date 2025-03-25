@@ -1,3 +1,4 @@
+<script>
 /**********************************************
  * Add your railway link below
  **********************************************/
@@ -235,9 +236,77 @@ function setDonationCookieOnce() {
     }
   }
 
+  /**********************************************
+   * ***** NEW BLOCK FEATURE *****
+   * We track consecutive failures and block user
+   * after 3 consecutive failures for 5 days.
+   **********************************************/
+
+  // Use existing getCookie / setCookie from above
+
+  function getAttemptCount() {
+    const data = getCookie('paymentAttemptsCookie');
+    if (data) {
+      try {
+        return parseInt(data, 10) || 0;
+      } catch (e) {
+        return 0;
+      }
+    }
+    return 0;
+  }
+
+  function setAttemptCount(count) {
+    // store attempt count for 30 days just to be safe
+    setCookie('paymentAttemptsCookie', count.toString(), 30);
+  }
+
+  function resetAttemptCount() {
+    setAttemptCount(0);
+  }
+
+  function isUserBlocked() {
+    // if cookie doesn't exist, not blocked
+    const blockData = getCookie('paymentBlockCookie');
+    if (!blockData) return false;
+
+    // blockData = { blockUntil: <timestamp in ms> }
+    try {
+      const parsed = JSON.parse(blockData);
+      const now = Date.now();
+      if (now < parsed.blockUntil) {
+        // still blocked
+        return true;
+      } else {
+        // block has expired, remove the cookie
+        setCookie('paymentBlockCookie', '', -1);
+        return false;
+      }
+    } catch (err) {
+      // if parse fails, remove invalid cookie
+      setCookie('paymentBlockCookie', '', -1);
+      return false;
+    }
+  }
+
+  function blockUserFor5Days() {
+    const fiveDaysMs = 5 * 24 * 60 * 60 * 1000;
+    const blockUntil = Date.now() + fiveDaysMs;
+    const data = { blockUntil };
+    setCookie('paymentBlockCookie', JSON.stringify(data), 5);
+  }
+  // ***** END OF NEW BLOCK FEATURE *****
+
   donateButton.addEventListener('click', async function() {
     try {
       clearGlobalError();
+
+      // ***** NEW BLOCK FEATURE: check if user is blocked *****
+      if (isUserBlocked()) {
+        showGlobalError('Your payment cannot be processed at this time. Please try again later.');
+        return;
+      }
+      // ***** END *****
 
       if (selectedDonation <= 0) {
         showGlobalError('Please select a donation amount first.');
@@ -355,6 +424,13 @@ function setDonationCookieOnce() {
 
         // 3) If PaymentIntent is successful
         if (paymentIntent && paymentIntent.status === 'succeeded') {
+
+          // ***** NEW BLOCK FEATURE: Reset attempt count on success *****
+          resetAttemptCount();
+          // Optionally, if you want to remove block cookie immediately on success:
+          // setCookie('paymentBlockCookie', '', -1);
+          // ***** END *****
+
           // Generate unique event_id
           const eventId = `order_${Date.now()}_${Math.random().toString(36).substr(2, 9).toUpperCase()}`;
 
@@ -428,6 +504,19 @@ function setDonationCookieOnce() {
         hideLoadingState();
         showGlobalError(`Payment error: ${err.message}`);
         console.error('Error during payment confirmation:', err);
+
+        // ***** NEW BLOCK FEATURE: handle failures *****
+        let count = getAttemptCount();
+        count += 1;
+        setAttemptCount(count);
+
+        if (count >= 3) {
+          // block user for 5 days
+          blockUserFor5Days();
+          // reset attempts
+          resetAttemptCount();
+        }
+        // ***** END *****
       }
     } catch (err) {
       hideLoadingState();
@@ -436,4 +525,4 @@ function setDonationCookieOnce() {
     }
   });
 })();
-
+</script>
