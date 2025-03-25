@@ -469,7 +469,7 @@ function handlePaymentSuccess() {
 
         // 5) Redirect to "Thank you" page or wherever
         setTimeout(() => {
-          window.location.href = 'https://ituberus.github.io/tesl/thanks';
+          window.location.href = 'thanks.html';
         }, 500);
 
       } else {
