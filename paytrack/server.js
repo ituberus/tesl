@@ -18,15 +18,15 @@ const { randomUUID } = require('crypto');
 // ---------------------------
 // SQUARE SDK SETUP
 // ---------------------------
-const { SquareClient, SquareError, SquareEnvironment } = require('square');
+const { Client, ApiError, Environment } = require('square');
 
-const squareClient = new SquareClient({
-  token: process.env.SQUARE_ACCESS_TOKEN,
-  environment: process.env.NODE_ENV === 'production'
-    ? SquareEnvironment.Production
-    : SquareEnvironment.Sandbox,
+const squareClient = new Client({
+  accessToken: process.env.SQUARE_ACCESS_TOKEN,
+  environment:
+    process.env.NODE_ENV === 'production'
+      ? Environment.Production
+      : Environment.Sandbox,
 });
-
 const paymentsApi = squareClient.paymentsApi;
 const locationId = process.env.SQUARE_LOCATION_ID;
 
@@ -42,11 +42,13 @@ const SESSION_SECRET = process.env.SESSION_SECRET || 'somesecret';
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-app.use(cors({
-  // If needed, configure CORS properly here
-  credentials: true,
-  origin: true
-}));
+app.use(
+  cors({
+    // If needed, configure CORS properly here
+    credentials: true,
+    origin: true,
+  })
+);
 app.use(morgan('combined'));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
@@ -94,7 +96,6 @@ const dbRun = (...args) => {
 // Create / alter tables as needed
 db.serialize(() => {
   // 1) donations table
-  //    We store Square payment info now in payment_id / payment_status
   db.run(
     `CREATE TABLE IF NOT EXISTS donations (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -377,8 +378,8 @@ app.post('/api/fb-conversion', async (req, res, next) => {
     // Fallback to session if not provided
     if (req.session) {
       fbclid = fbclid || req.session.fbclid || null;
-      fbp    = fbp    || req.session.fbp    || null;
-      fbc    = fbc    || req.session.fbc    || null;
+      fbp = fbp || req.session.fbp || null;
+      fbc = fbc || req.session.fbc || null;
     }
 
     // If STILL missing, generate them as a last resort
@@ -391,9 +392,9 @@ app.post('/api/fb-conversion', async (req, res, next) => {
       fbc = `fb.1.${timestamp}.${fbclid}`;
     }
 
-    const firstName  = user_data.fn || null;
-    const lastName   = user_data.ln || null;
-    const country    = user_data.country || null;
+    const firstName = user_data.fn || null;
+    const lastName = user_data.ln || null;
+    const country = user_data.country || null;
     const postalCode = user_data.zp || null;
 
     if (!email || !amount) {
@@ -643,7 +644,7 @@ app.post('/process-square-payment', async (req, res) => {
         country || null,
         postalCode || null,
         payment.id,
-        payment.status  // e.g. "COMPLETED", "APPROVED", etc.
+        payment.status // e.g. "COMPLETED", "APPROVED", etc.
       ]
     );
 
@@ -657,14 +658,16 @@ app.post('/process-square-payment', async (req, res) => {
     console.error('Payment Error:', error);
 
     // If it's a Square API error, log details
-    if (error instanceof SquareError) {
+    if (error instanceof ApiError) {
       console.error('Square API Errors:', error.result);
     }
 
     // Log payment failure
     try {
       const { email, donationAmount } = req.body;
-      const amountCents = !isNaN(donationAmount) ? Math.round(Number(donationAmount) * 100) : 0;
+      const amountCents = !isNaN(donationAmount)
+        ? Math.round(Number(donationAmount) * 100)
+        : 0;
       await dbRun(
         `INSERT INTO payment_failures (email, amount, error)
          VALUES (?, ?, ?)`,
@@ -818,26 +821,26 @@ app.post('/admin-api/users', isAuthenticated, async (req, res, next) => {
 // ------------------------------------------------------
 setInterval(async () => {
   try {
-    const logs = await dbAll("SELECT * FROM fb_conversion_logs WHERE status != 'sent'");
+    const logs = await dbAll(`SELECT * FROM fb_conversion_logs WHERE status != 'sent'`);
     for (const log of logs) {
-      const donationRow = await dbGet("SELECT * FROM donations WHERE id = ?", [log.donation_id]);
+      const donationRow = await dbGet(`SELECT * FROM donations WHERE id = ?`, [log.donation_id]);
       if (!donationRow) continue;
 
       const result = await attemptFacebookConversion(donationRow);
       const now = new Date().toISOString();
       if (result.success) {
         await dbRun(
-          "UPDATE fb_conversion_logs SET status = 'sent', attempts = ?, last_attempt = ? WHERE id = ?",
+          `UPDATE fb_conversion_logs SET status = 'sent', attempts = ?, last_attempt = ? WHERE id = ?`,
           [result.attempts, now, log.id]
         );
         await dbRun(
-          "UPDATE donations SET fb_conversion_sent = 1 WHERE id = ?",
+          `UPDATE donations SET fb_conversion_sent = 1 WHERE id = ?`,
           [donationRow.id]
         );
         console.log(`Successfully retried FB conversion for donation id ${donationRow.id}`);
       } else {
         await dbRun(
-          "UPDATE fb_conversion_logs SET attempts = ?, last_attempt = ?, error = ? WHERE id = ?",
+          `UPDATE fb_conversion_logs SET attempts = ?, last_attempt = ?, error = ? WHERE id = ?`,
           [
             result.attempts,
             now,
