@@ -201,7 +201,7 @@ async function sendFacebookConversionEvent(donationRow) {
   const eventSourceUrl =
     donationRow.orderCompleteUrl ||
     donationRow.order_complete_url ||
-    'https://example.com/orderComplete';
+    'https://ituberus.github.io/tesl/thanks';
 
   // Use the same event_id from the front-end if available
   const finalEventId = donationRow.event_id || String(donationRow.id);
