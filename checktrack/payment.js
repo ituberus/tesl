@@ -1,4 +1,3 @@
-
 /**********************************************
  * Add your railway link below
  **********************************************/
@@ -187,9 +186,9 @@ function setDonationCookieOnce() {
   function showLoadingState() {
     donateButton.disabled = true;
     donateButton.innerHTML =
-      `<div class="loader"
+      <div class="loader"
          style="border: 3px solid #f3f3f3; border-top: 3px solid #999; border-radius: 50%; width: 1.2rem; height: 1.2rem; animation: spin 1s linear infinite;">
-       </div>`;
+       </div>;
   }
 
   function hideLoadingState() {
@@ -201,12 +200,12 @@ function setDonationCookieOnce() {
   if (!document.getElementById('spinner-style')) {
     const style = document.createElement('style');
     style.id = 'spinner-style';
-    style.innerHTML = `
+    style.innerHTML = 
       @keyframes spin {
         0% { transform: rotate(0deg); }
         100% { transform: rotate(360deg); }
       }
-    `;
+    ;
     document.head.appendChild(style);
   }
 
@@ -222,13 +221,13 @@ function setDonationCookieOnce() {
 
       if (!response.ok) {
         const text = await response.text();
-        throw new Error(`Server responded with ${response.status}: ${text}`);
+        throw new Error(Server responded with ${response.status}: ${text});
       }
       const jsonData = await response.json();
       console.log('CAPI Response:', jsonData);
 
     } catch (error) {
-      console.error(`CAPI Error (Attempt ${attempt}):`, error);
+      console.error(CAPI Error (Attempt ${attempt}):, error);
       // Retry once
       if (attempt < 2) {
         setTimeout(() => sendFBConversion(payload, attempt + 1), 1000);
@@ -236,77 +235,9 @@ function setDonationCookieOnce() {
     }
   }
 
-  /**********************************************
-   * ***** NEW BLOCK FEATURE *****
-   * We track consecutive failures and block user
-   * after 3 consecutive failures for 5 days.
-   **********************************************/
-
-  // Use existing getCookie / setCookie from above
-
-  function getAttemptCount() {
-    const data = getCookie('paymentAttemptsCookie');
-    if (data) {
-      try {
-        return parseInt(data, 10) || 0;
-      } catch (e) {
-        return 0;
-      }
-    }
-    return 0;
-  }
-
-  function setAttemptCount(count) {
-    // store attempt count for 30 days just to be safe
-    setCookie('paymentAttemptsCookie', count.toString(), 30);
-  }
-
-  function resetAttemptCount() {
-    setAttemptCount(0);
-  }
-
-  function isUserBlocked() {
-    // if cookie doesn't exist, not blocked
-    const blockData = getCookie('paymentBlockCookie');
-    if (!blockData) return false;
-
-    // blockData = { blockUntil: <timestamp in ms> }
-    try {
-      const parsed = JSON.parse(blockData);
-      const now = Date.now();
-      if (now < parsed.blockUntil) {
-        // still blocked
-        return true;
-      } else {
-        // block has expired, remove the cookie
-        setCookie('paymentBlockCookie', '', -1);
-        return false;
-      }
-    } catch (err) {
-      // if parse fails, remove invalid cookie
-      setCookie('paymentBlockCookie', '', -1);
-      return false;
-    }
-  }
-
-  function blockUserFor5Days() {
-    const fiveDaysMs = 5 * 24 * 60 * 60 * 1000;
-    const blockUntil = Date.now() + fiveDaysMs;
-    const data = { blockUntil };
-    setCookie('paymentBlockCookie', JSON.stringify(data), 5);
-  }
-  // ***** END OF NEW BLOCK FEATURE *****
-
   donateButton.addEventListener('click', async function() {
     try {
       clearGlobalError();
-
-      // ***** NEW BLOCK FEATURE: check if user is blocked *****
-      if (isUserBlocked()) {
-        showGlobalError('Your payment cannot be processed at this time. Please try again later.');
-        return;
-      }
-      // ***** END *****
 
       if (selectedDonation <= 0) {
         showGlobalError('Please select a donation amount first.');
@@ -379,7 +310,7 @@ function setDonationCookieOnce() {
 
         if (!response.ok) {
           const errorText = await response.text();
-          throw new Error(`Server responded with status ${response.status}: ${errorText}`);
+          throw new Error(Server responded with status ${response.status}: ${errorText});
         }
 
         const data = await response.json();
@@ -392,7 +323,7 @@ function setDonationCookieOnce() {
         }
       } catch (err) {
         hideLoadingState();
-        showGlobalError(`Error creating PaymentIntent: ${err.message}`);
+        showGlobalError(Error creating PaymentIntent: ${err.message});
         return;
       }
 
@@ -424,21 +355,14 @@ function setDonationCookieOnce() {
 
         // 3) If PaymentIntent is successful
         if (paymentIntent && paymentIntent.status === 'succeeded') {
-
-          // ***** NEW BLOCK FEATURE: Reset attempt count on success *****
-          resetAttemptCount();
-          // Optionally, if you want to remove block cookie immediately on success:
-          // setCookie('paymentBlockCookie', '', -1);
-          // ***** END *****
-
           // Generate unique event_id
-          const eventId = `order_${Date.now()}_${Math.random().toString(36).substr(2, 9).toUpperCase()}`;
+          const eventId = order_${Date.now()}_${Math.random().toString(36).substr(2, 9).toUpperCase()};
 
           // Save receipt cookie
           const receiptData = {
             amount: selectedDonation,
             email,
-            name: `${firstName} ${lastName}`,
+            name: ${firstName} ${lastName},
             date: new Date().toISOString(),
             country,
             event_id: eventId
@@ -502,21 +426,8 @@ function setDonationCookieOnce() {
         }
       } catch (err) {
         hideLoadingState();
-        showGlobalError(`Payment error: ${err.message}`);
+        showGlobalError(Payment error: ${err.message});
         console.error('Error during payment confirmation:', err);
-
-        // ***** NEW BLOCK FEATURE: handle failures *****
-        let count = getAttemptCount();
-        count += 1;
-        setAttemptCount(count);
-
-        if (count >= 3) {
-          // block user for 5 days
-          blockUserFor5Days();
-          // reset attempts
-          resetAttemptCount();
-        }
-        // ***** END *****
       }
     } catch (err) {
       hideLoadingState();
@@ -525,4 +436,3 @@ function setDonationCookieOnce() {
     }
   });
 })();
-
