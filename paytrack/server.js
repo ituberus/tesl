@@ -18,11 +18,13 @@ const { randomUUID } = require('crypto');
 // ---------------------------
 // SQUARE SDK SETUP
 // ---------------------------
-const { Client, ApiError } = require('square');
+const { SquareClient, SquareError, SquareEnvironment } = require('square');
 
-const squareClient = new Client({
-  environment: process.env.NODE_ENV === 'production' ? 'production' : 'sandbox',
-  accessToken: process.env.SQUARE_ACCESS_TOKEN,
+const squareClient = new SquareClient({
+  token: process.env.SQUARE_ACCESS_TOKEN,
+  environment: process.env.NODE_ENV === 'production'
+    ? SquareEnvironment.Production
+    : SquareEnvironment.Sandbox,
 });
 
 const paymentsApi = squareClient.paymentsApi;
@@ -655,7 +657,7 @@ app.post('/process-square-payment', async (req, res) => {
     console.error('Payment Error:', error);
 
     // If it's a Square API error, log details
-    if (error instanceof ApiError) {
+    if (error instanceof SquareError) {
       console.error('Square API Errors:', error.result);
     }
 
