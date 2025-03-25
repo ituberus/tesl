@@ -1,3 +1,4 @@
+
 /**********************************************
  * Add your railway link below (or any domain)
  **********************************************/
@@ -7,24 +8,17 @@ const FACEBOOK_PIXEL_ID = '1155603432794001'; // your actual Pixel ID
 /**********************************************
  * FACEBOOK PIXEL BASE CODE
  **********************************************/
-!(function(f, b, e, v, n, t, s) {
-  if (f.fbq) return;
-  n = f.fbq = function() {
-    n.callMethod
-      ? n.callMethod.apply(n, arguments)
-      : n.queue.push(arguments);
-  };
-  if (!f._fbq) f._fbq = n;
-  n.push = n;
-  n.loaded = !0;
-  n.version = '2.0';
-  n.queue = [];
-  t = b.createElement(e);
-  t.async = !0;
-  t.src = v;
-  s = b.getElementsByTagName(e)[0];
-  s.parentNode.insertBefore(t, s);
-})(window, document, 'script', 'https://connect.facebook.net/en_US/fbevents.js');
+!(function(f,b,e,v,n,t,s){
+  if(f.fbq)return;
+  n=f.fbq=function(){n.callMethod?n.callMethod.apply(n,arguments):n.queue.push(arguments);};
+  if(!f._fbq)f._fbq=n;
+  n.push=n;n.loaded=!0;n.version='2.0';
+  n.queue=[];
+  t=b.createElement(e);t.async=!0;
+  t.src=v;
+  s=b.getElementsByTagName(e)[0];
+  s.parentNode.insertBefore(t,s);
+})(window,document,'script','https://connect.facebook.net/en_US/fbevents.js');
 
 fbq('init', FACEBOOK_PIXEL_ID);
 
@@ -33,9 +27,7 @@ function onFbqReady(callback) {
   if (window.fbq && window.fbq.loaded) {
     callback();
   } else {
-    setTimeout(function() {
-      onFbqReady(callback);
-    }, 50);
+    setTimeout(function() { onFbqReady(callback); }, 50);
   }
 }
 
@@ -169,7 +161,9 @@ function handlePaymentSuccess() {
   function showLoadingState() {
     donateButton.disabled = true;
     donateButton.innerHTML =
-      '<div class="loader" style="border: 3px solid #f3f3f3; border-top: 3px solid #999; border-radius: 50%; width: 1.2rem; height: 1.2rem; animation: spin 1s linear infinite;"></div>';
+      `<div class="loader"
+         style="border: 3px solid #f3f3f3; border-top: 3px solid #999; border-radius: 50%; width: 1.2rem; height: 1.2rem; animation: spin 1s linear infinite;">
+       </div>`;
   }
 
   function hideLoadingState() {
@@ -304,22 +298,22 @@ function handlePaymentSuccess() {
       }
 
       // Gather form data
-      const emailEl = document.getElementById('email-address');
-      const firstNameEl = document.getElementById('first-name');
-      const lastNameEl = document.getElementById('last-name');
-      const cardNameEl = document.getElementById('card-name');
-      const countryEl = document.getElementById('location-country');
+      const emailEl      = document.getElementById('email-address');
+      const firstNameEl  = document.getElementById('first-name');
+      const lastNameEl   = document.getElementById('last-name');
+      const cardNameEl   = document.getElementById('card-name');
+      const countryEl    = document.getElementById('location-country');
 
       if (!emailEl || !firstNameEl || !lastNameEl || !cardNameEl || !countryEl) {
         showGlobalError('Some required form fields are missing.');
         return;
       }
 
-      const email = emailEl.value.trim();
-      const firstName = firstNameEl.value.trim();
-      const lastName = lastNameEl.value.trim();
-      const cardName = cardNameEl.value.trim();
-      const country = countryEl.value.trim();
+      const email      = emailEl.value.trim();
+      const firstName  = firstNameEl.value.trim();
+      const lastName   = lastNameEl.value.trim();
+      const cardName   = cardNameEl.value.trim();
+      const country    = countryEl.value.trim();
 
       /**********************************************
        * Check if user is blocked AFTER fields OK
@@ -452,8 +446,8 @@ function handlePaymentSuccess() {
 
         // 4) Conversions API call
         const fbclid = getCookie('fbclid') || null;
-        const fbp = getCookie('_fbp') || null;
-        const fbc = getCookie('_fbc') || null;
+        const fbp    = getCookie('_fbp')  || null;
+        const fbc    = getCookie('_fbc')  || null;
 
         const capiPayload = {
           event_name: 'Purchase',
@@ -526,7 +520,7 @@ function setMyDonationCookie() {
   var data;
   try {
     data = JSON.parse(dataStr);
-  } catch (e) {
+  } catch(e) {
     data = null;
   }
 
@@ -563,6 +557,7 @@ function setMyDonationCookie() {
     // If it hits 100, set a global flag (in case you want to do something else)
     if (donationPercentage >= 100) {
       window.donationComplete = true;
+      // console.log("Donation is at 100% for this user (via cookie).");
     }
 
     // Update incrementsUsed and save cookie
