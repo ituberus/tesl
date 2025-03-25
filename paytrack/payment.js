@@ -563,5 +563,5 @@ function setMyDonationCookie() {
     data.incrementsUsed = totalIncrementsSoFar;
     setCookieForDonation(cookieName, JSON.stringify(data), 30);
   }
-  // ==================== END OF COOKIE SCRIPT ===================
+  // ==================== END OF COOKIE SCRIPT ====================
 }
