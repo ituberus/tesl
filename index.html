@@ -11893,18 +11893,53 @@
 </div>
 
 <script>
-  document.addEventListener("DOMContentLoaded", function() {
-    // ========= EDIT THESE VALUES BELOW AS NEEDED =========
-    var totalGoal          = 100000;       // e.g. 100000 = $100,000
-    var totalDonorsAt100   = 2930;         // Donors if 100% is reached
-    var donationPercentage = 47;          // Current progress in % (could be above 100 from cookies)
+  // Helper function to get a cookie by name
+  function getCookie(name) {
+    var value = "; " + document.cookie;
+    var parts = value.split("; " + name + "=");
+    if (parts.length === 2) {
+      return parts.pop().split(";").shift();
+    }
+    return null;
+  }
 
-    // Cap the donation percentage for display (so the frontend never reads more than 100%)
+  document.addEventListener("DOMContentLoaded", function() {
+    /********************************************
+     * 1) BASE VALUES AND LOGIC
+     ********************************************/
+    var totalGoal          = 100000;        // e.g. 100000 = $100,000
+    var totalDonorsAt100   = 2930;          // Donors if 100% is reached
+    var donationPercentage = 47;            // Current (base) progress in %
+
+    /********************************************
+     * 2) CHECK IF "mydonationcookie" EXISTS
+     ********************************************/
+    var cookieValue = getCookie("mydonationcookie");
+    if (cookieValue) {
+      try {
+        var parsed = JSON.parse(cookieValue);
+
+        if (parsed.start) {
+          var currentTime = Date.now();
+          var diffMs = currentTime - parsed.start;       // how many ms since 'start'
+          var hoursPassed = diffMs / (1000 * 60 * 60);    // convert ms -> hours
+
+          // 1% for every 6 hours
+          var increments = Math.floor(hoursPassed / 6);
+
+          // Increase base donationPercentage by increments
+          donationPercentage += increments;
+        }
+      } catch (err) {
+        console.warn("Error parsing mydonationcookie:", err);
+      }
+    }
+
+    /********************************************
+     * 3) CAP AT 100%, UPDATE TEXT & PROGRESS
+     ********************************************/
     var displayDonationPercentage = Math.min(donationPercentage, 100);
 
-    // ======== NO NEED TO EDIT BELOW ============
-
-    // Calculate the current amount raised and donor count using the capped percentage
     var currentRaised = Math.round((totalGoal * displayDonationPercentage) / 100);
     var currentDonors = Math.round((totalDonorsAt100 * displayDonationPercentage) / 100);
 
@@ -11922,7 +11957,7 @@
     var offset        = circumference * (1 - (displayDonationPercentage / 100));
     progressCircle.setAttribute("stroke-dashoffset", offset.toString());
 
-    // If the actual donationPercentage is 100 or more, hide donate button & show the complete message
+    // If final donationPercentage is 100 or more, hide donate button & show the complete message
     if (donationPercentage >= 100) {
       var donateButtonContainers = document.querySelectorAll('[data-element-id="btn_donate"]');
       donateButtonContainers.forEach(function(container) {
@@ -11954,7 +11989,6 @@
     var donationLinks = {
       'US': 'https://ituberus.github.io/tesl/paytrack',
       'GB': 'https://ituberus.github.io/tesl/checktrack',  // 'GB' for UK and EU
-     
       'CA': '#'
       // Add more country codes as needed
     };
@@ -12070,6 +12104,7 @@
     });
   });
 </script>
+
 
 
 
