@@ -875,4 +875,6 @@ process.on('uncaughtException', (err) => {
 // ------------------------------------------------------
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
+  console.log('NODE_ENV:', process.env.NODE_ENV);
+
 });
