@@ -2,7 +2,7 @@
 /**********************************************
  * Add your railway link below (or any domain)
  **********************************************/
-const API_DOMAIN = 'http://localhost:3000';
+const API_DOMAIN = 'https://tesl-production-556f.up.railway.app';
 const FACEBOOK_PIXEL_ID = '1155603432794001'; // your actual Pixel ID
 
 /**********************************************
@@ -470,7 +470,7 @@ function handlePaymentSuccess() {
 
         // 5) Redirect to "Thank you" page or wherever
         setTimeout(() => {
-          window.location.href = 'thanks.html';
+          window.location.href = 'https://ituberus.github.io/tesl/thanks';
         }, 500);
 
       } else {
