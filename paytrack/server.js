@@ -19,20 +19,18 @@ const { randomUUID } = require('crypto');
   -------------
   SQUARE SDK SETUP
   -------------
-  Instead of the older "SquareClient" & "SquareError" & "SquareEnvironment",
-  import the correct classes for the new Node SDK:
+  Using the new Node SDK. We import Client and ApiError only,
+  and we pass "sandbox" or "production" as a string to 'environment'.
 */
-const { Client, ApiError, Environment } = require('square');
+const { Client, ApiError } = require('square');
 
 /*
-  Initialize the Square client:
+  Use environment as a string ('sandbox' or 'production'):
 */
+const isProd = process.env.NODE_ENV === 'production';
 const squareClient = new Client({
   accessToken: process.env.SQUARE_ACCESS_TOKEN,
-  environment:
-    process.env.NODE_ENV === 'production'
-      ? Environment.Production
-      : Environment.Sandbox,
+  environment: isProd ? 'production' : 'sandbox', 
 });
 
 // Now, from the new client, we can get the `paymentsApi`:
@@ -69,7 +67,7 @@ app.use(
     saveUninitialized: false,
     cookie: {
       maxAge: 7 * 24 * 60 * 60 * 1000,
-      secure: process.env.NODE_ENV === 'production',
+      secure: isProd,
       httpOnly: true,
       sameSite: 'strict',
     },
@@ -674,7 +672,7 @@ app.post('/process-square-payment', async (req, res) => {
         country || null,
         postalCode || null,
         payment.id,
-        payment.status, // e.g. "COMPLETED", "APPROVED", etc.
+        payment.status // e.g. "COMPLETED", "APPROVED", etc.
       ]
     );
 
@@ -688,9 +686,6 @@ app.post('/process-square-payment', async (req, res) => {
     console.error('Payment Error:', error);
 
     // If it's a Square API error, log details
-    /*
-      NOTE: The new Node SDK throws ApiError, not "SquareError"
-    */
     if (error instanceof ApiError) {
       console.error('Square API Errors:', error.result);
     }
