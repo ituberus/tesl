@@ -34,7 +34,7 @@ onFbqReady(function() {
   fbq('track', 'InitiateCheckout', {
     content_name: 'Donation Order',
     content_category: 'Donation',
-    currency: 'USD'
+    currency: 'EUR'
   });
 });
 
@@ -378,7 +378,7 @@ function setDonationCookieOnce() {
           if (typeof fbq !== 'undefined') {
             fbq('track', 'Purchase', {
               value: selectedDonation,
-              currency: 'USD',
+              currency: 'EUR',
               content_name: 'Donation',
               event_id: eventId,
               user_data: {
@@ -436,5 +436,3 @@ function setDonationCookieOnce() {
     }
   });
 })();
-
-
