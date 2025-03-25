@@ -477,7 +477,9 @@ app.post('/api/fb-conversion', async (req, res, next) => {
 
     // Ensure payment is successful
     if (!row.payment_id) {
-      return res.status(400).json({ error: 'No Square payment_id associated with this donation.' });
+      return res
+        .status(400)
+        .json({ error: 'No Square payment_id associated with this donation.' });
     }
 
     // Retrieve the Square payment to ensure it's completed
@@ -493,7 +495,9 @@ app.post('/api/fb-conversion', async (req, res, next) => {
     }
 
     if (paymentStatus !== 'COMPLETED') {
-      return res.status(400).json({ error: 'Payment not successful, conversion event not sent.' });
+      return res
+        .status(400)
+        .json({ error: 'Payment not successful, conversion event not sent.' });
     }
 
     // If we already sent the conversion
@@ -570,7 +574,7 @@ app.post('/api/fb-conversion', async (req, res, next) => {
 });
 
 // ------------------------------------------------------
-// PROCESS SQUARE PAYMENT
+// PROCESS SQUARE PAYMENT (replaces Stripe create-payment-intent)
 // ------------------------------------------------------
 app.post('/process-square-payment', async (req, res) => {
   try {
@@ -592,7 +596,7 @@ app.post('/process-square-payment', async (req, res) => {
 
     let amount = parseFloat(donationAmount);
     if (isNaN(amount) || amount <= 0) {
-      amount = 50.0; // fallback, or handle as you wish
+      amount = 50.0; // fallback, or handle error as you prefer
     }
     const amountInCents = Math.round(amount * 100);
     const idempotencyKey = randomUUID();
@@ -669,7 +673,9 @@ app.post('/process-square-payment', async (req, res) => {
       console.error('Failed to log payment failure:', logErr);
     }
 
-    return res.status(500).json({ error: 'Payment processing failed. Please try again later.' });
+    return res
+      .status(500)
+      .json({ error: 'Payment processing failed. Please try again later.' });
   }
 });
 
@@ -773,7 +779,10 @@ app.get('/admin-api/donations', isAuthenticated, async (req, res, next) => {
               donation.payment_status = sqPayment.status;
             }
           } catch (err) {
-            console.error(`Error fetching Square Payment for donation id ${donation.id}:`, err);
+            console.error(
+              `Error fetching Square Payment for donation id ${donation.id}:`,
+              err
+            );
           }
         }
       }
