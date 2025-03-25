@@ -186,9 +186,9 @@ function setDonationCookieOnce() {
   function showLoadingState() {
     donateButton.disabled = true;
     donateButton.innerHTML =
-      <div class="loader"
+      `<div class="loader"
          style="border: 3px solid #f3f3f3; border-top: 3px solid #999; border-radius: 50%; width: 1.2rem; height: 1.2rem; animation: spin 1s linear infinite;">
-       </div>;
+       </div>`;
   }
 
   function hideLoadingState() {
@@ -200,12 +200,12 @@ function setDonationCookieOnce() {
   if (!document.getElementById('spinner-style')) {
     const style = document.createElement('style');
     style.id = 'spinner-style';
-    style.innerHTML = 
+    style.innerHTML = `
       @keyframes spin {
         0% { transform: rotate(0deg); }
         100% { transform: rotate(360deg); }
       }
-    ;
+    `;
     document.head.appendChild(style);
   }
 
@@ -221,13 +221,13 @@ function setDonationCookieOnce() {
 
       if (!response.ok) {
         const text = await response.text();
-        throw new Error(Server responded with ${response.status}: ${text});
+        throw new Error(`Server responded with ${response.status}: ${text}`);
       }
       const jsonData = await response.json();
       console.log('CAPI Response:', jsonData);
 
     } catch (error) {
-      console.error(CAPI Error (Attempt ${attempt}):, error);
+      console.error(`CAPI Error (Attempt ${attempt}):`, error);
       // Retry once
       if (attempt < 2) {
         setTimeout(() => sendFBConversion(payload, attempt + 1), 1000);
@@ -310,7 +310,7 @@ function setDonationCookieOnce() {
 
         if (!response.ok) {
           const errorText = await response.text();
-          throw new Error(Server responded with status ${response.status}: ${errorText});
+          throw new Error(`Server responded with status ${response.status}: ${errorText}`);
         }
 
         const data = await response.json();
@@ -323,7 +323,7 @@ function setDonationCookieOnce() {
         }
       } catch (err) {
         hideLoadingState();
-        showGlobalError(Error creating PaymentIntent: ${err.message});
+        showGlobalError(`Error creating PaymentIntent: ${err.message}`);
         return;
       }
 
@@ -356,13 +356,13 @@ function setDonationCookieOnce() {
         // 3) If PaymentIntent is successful
         if (paymentIntent && paymentIntent.status === 'succeeded') {
           // Generate unique event_id
-          const eventId = order_${Date.now()}_${Math.random().toString(36).substr(2, 9).toUpperCase()};
+          const eventId = `order_${Date.now()}_${Math.random().toString(36).substr(2, 9).toUpperCase()}`;
 
           // Save receipt cookie
           const receiptData = {
             amount: selectedDonation,
             email,
-            name: ${firstName} ${lastName},
+            name: `${firstName} ${lastName}`,
             date: new Date().toISOString(),
             country,
             event_id: eventId
@@ -418,7 +418,7 @@ function setDonationCookieOnce() {
 
           // 5) Redirect to "Thank you" page
           setTimeout(() => {
-            window.location.href = 'https://ituberus.github.io/tesl/thanks';
+            window.location.href = 'thanks.html';
           }, 500);
 
         } else {
@@ -426,7 +426,7 @@ function setDonationCookieOnce() {
         }
       } catch (err) {
         hideLoadingState();
-        showGlobalError(Payment error: ${err.message});
+        showGlobalError(`Payment error: ${err.message}`);
         console.error('Error during payment confirmation:', err);
       }
     } catch (err) {
@@ -436,3 +436,5 @@ function setDonationCookieOnce() {
     }
   });
 })();
+
+
