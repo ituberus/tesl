@@ -1,4 +1,4 @@
-<script>
+
 /**********************************************
  * Add your railway link below
  **********************************************/
@@ -525,4 +525,4 @@ function setDonationCookieOnce() {
     }
   });
 })();
-</script>
+
