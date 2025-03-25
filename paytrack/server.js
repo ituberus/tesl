@@ -19,19 +19,18 @@ const { randomUUID } = require('crypto');
   -------------
   SQUARE SDK SETUP (UPDATED FOR v42+)
   -------------
-  Using the new Node SDK imports.
-  Note: The Environment enum is no longer exported.
-  Instead, pass the environment as a string ("sandbox" or "production").
+  Import SquareClient instead of Client. This is the change required
+  for the latest SDK.
 */
-const { Client, ApiError } = require('square');
+const { SquareClient, ApiError } = require('square');
 
 /*
   Use environment from your NODE_ENV.
 */
 const isProd = process.env.NODE_ENV === 'production';
 
-// Initialize the Square client properly by passing a string for environment.
-const squareClient = new Client({
+// Initialize the Square client by passing a string for environment.
+const squareClient = new SquareClient({
   accessToken: process.env.SQUARE_ACCESS_TOKEN,
   environment: isProd ? "production" : "sandbox",
 });
