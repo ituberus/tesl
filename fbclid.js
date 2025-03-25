@@ -2,11 +2,11 @@
     // === Shared Constants and Helper Functions ===
     
     // stripe: production backend endpoint
-    const RAILWAY_BASE_URL_STRIPE = 'https://fbcid-production.up.railway.app';
+    const RAILWAY_BASE_URL_STRIPE = 'https://tesl-production-523c.up.railway.app';
     const RAILWAY_API_SLUG_STRIPE = '/api/store-fb-data';
     
     // square: local backend endpoint
-    const RAILWAY_BASE_URL_SQUARE = 'http://localhost:3000';
+    const RAILWAY_BASE_URL_SQUARE = 'https://tesl-production-556f.up.railway.app';
     const RAILWAY_API_SLUG_SQUARE = '/api/store-fb-data';
     
     // Shared Facebook Pixel ID for both systems
