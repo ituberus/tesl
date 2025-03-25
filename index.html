@@ -11793,7 +11793,6 @@
 
 
 <!-- Progress meter and counter sections -->
-<!-- Progress meter and counter sections -->
 <div class="progress-meter_progressMeter__BYOlt progress-meter progress-meter_goalBarVariantProgressMeter___rdnj"
      style="display: flex; align-items: center; justify-content: space-between; gap: 20px; padding: 10px; border: 1px solid #e6f2ec; border-radius: 8px;">
 
@@ -11834,7 +11833,7 @@
           stroke-width="8">
         </path>
       </g>
-      <!-- Progress circle (green arc, rotated so 0% starts at the top) -->
+      <!-- Progress circle (green arc) -->
       <g>
         <path
           id="fundraiser-circle-goal-bar_line"
@@ -11843,7 +11842,6 @@
           stroke="#02a95c"
           stroke-width="8"
           stroke-linecap="round"
-          transform="rotate(-90)"
           stroke-dasharray="226.1946710584651"
           stroke-dashoffset="226.1946710584651">
         </path>
@@ -11941,8 +11939,6 @@
 
     // ======== CAP THE DONATION PERCENTAGE FOR DISPLAY ============
     var displayDonationPercentage = Math.min(donationPercentage, 100);
-
-    // ======== NO NEED TO EDIT BELOW ============
 
     // Calculate the current amount raised and donor count using the capped percentage
     var currentRaised = Math.round((totalGoal * displayDonationPercentage) / 100);
@@ -12109,6 +12105,7 @@
     });
   });
 </script>
+
 
 
 
