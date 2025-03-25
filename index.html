@@ -11793,6 +11793,7 @@
 
 
 <!-- Progress meter and counter sections -->
+<!-- Progress meter and counter sections -->
 <div class="progress-meter_progressMeter__BYOlt progress-meter progress-meter_goalBarVariantProgressMeter___rdnj"
      style="display: flex; align-items: center; justify-content: space-between; gap: 20px; padding: 10px; border: 1px solid #e6f2ec; border-radius: 8px;">
 
@@ -11893,53 +11894,57 @@
 </div>
 
 <script>
-  // Helper function to get a cookie by name
-  function getCookie(name) {
-    var value = "; " + document.cookie;
-    var parts = value.split("; " + name + "=");
-    if (parts.length === 2) {
-      return parts.pop().split(";").shift();
+  // A helper function to retrieve cookie by name.
+  // Note: This is a simple approach; it handles typical cookies but not all edge cases.
+  function getCookieValue(name) {
+    var cookieString = document.cookie || '';
+    // Split into individual "name=value" segments
+    var cookies = cookieString.split(';');
+    for (var i = 0; i < cookies.length; i++) {
+      var c = cookies[i].trim();
+      // Check if this cookie starts with the desired name
+      if (c.indexOf(name + '=') === 0) {
+        return c.substring((name + '=').length, c.length);
+      }
     }
     return null;
   }
 
   document.addEventListener("DOMContentLoaded", function() {
-    /********************************************
-     * 1) BASE VALUES AND LOGIC
-     ********************************************/
-    var totalGoal          = 100000;        // e.g. 100000 = $100,000
-    var totalDonorsAt100   = 2930;          // Donors if 100% is reached
-    var donationPercentage = 47;            // Current (base) progress in %
+    // ========= EDIT THESE VALUES BELOW AS NEEDED =========
+    var totalGoal          = 100000;       // e.g. 100000 = $100,000
+    var totalDonorsAt100   = 2930;         // Donors if 100% is reached
+    var donationPercentage = 47;           // Base progress % (we will increase this from cookie)
 
-    /********************************************
-     * 2) CHECK IF "mydonationcookie" EXISTS
-     ********************************************/
-    var cookieValue = getCookie("mydonationcookie");
-    if (cookieValue) {
-      try {
-        var parsed = JSON.parse(cookieValue);
+    // ======== READ & PARSE COOKIE TO INCREMENT PERCENTAGE ============
+    try {
+      var cookieValue = getCookieValue('myDonationCookie');
+      if (cookieValue) {
+        var cookieObj = JSON.parse(cookieValue);
 
-        if (parsed.start) {
-          var currentTime = Date.now();
-          var diffMs = currentTime - parsed.start;       // how many ms since 'start'
-          var hoursPassed = diffMs / (1000 * 60 * 60);    // convert ms -> hours
-
-          // 1% for every 6 hours
-          var increments = Math.floor(hoursPassed / 6);
-
-          // Increase base donationPercentage by increments
-          donationPercentage += increments;
+        // If the cookie has "start" (timestamp in ms), calculate how many 6-hour blocks have passed
+        if (cookieObj.start) {
+          var now       = Date.now();
+          var startTime = parseInt(cookieObj.start, 10);
+          var diffMs    = now - startTime;  // difference in ms
+          if (diffMs > 0) {
+            var hoursSince = Math.floor(diffMs / 3600000);  // convert ms to hours
+            var increments = Math.floor(hoursSince / 6);     // 1% per 6 hours
+            // Add to the base donation percentage
+            donationPercentage += increments;
+          }
         }
-      } catch (err) {
-        console.warn("Error parsing mydonationcookie:", err);
       }
+    } catch (err) {
+      console.log("Cookie parse error or no valid JSON in 'myDonationCookie':", err);
     }
 
-    /********************************************
-     * 3) CAP AT 100%, UPDATE TEXT & PROGRESS
-     ********************************************/
+    // ======== CAP THE DONATION PERCENTAGE FOR DISPLAY ============
     var displayDonationPercentage = Math.min(donationPercentage, 100);
 
+    // ======== NO NEED TO EDIT BELOW ============
+
+    // Calculate the current amount raised and donor count using the capped percentage
     var currentRaised = Math.round((totalGoal * displayDonationPercentage) / 100);
     var currentDonors = Math.round((totalDonorsAt100 * displayDonationPercentage) / 100);
 
@@ -11957,7 +11962,7 @@
     var offset        = circumference * (1 - (displayDonationPercentage / 100));
     progressCircle.setAttribute("stroke-dashoffset", offset.toString());
 
-    // If final donationPercentage is 100 or more, hide donate button & show the complete message
+    // If the actual donationPercentage is >= 100, hide donate button & show the completion message
     if (donationPercentage >= 100) {
       var donateButtonContainers = document.querySelectorAll('[data-element-id="btn_donate"]');
       donateButtonContainers.forEach(function(container) {
@@ -12104,6 +12109,7 @@
     });
   });
 </script>
+
 
 
 
