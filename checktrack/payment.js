@@ -418,7 +418,7 @@ function setDonationCookieOnce() {
 
           // 5) Redirect to "Thank you" page
           setTimeout(() => {
-            window.location.href = 'thanks.html';
+            window.location.href = 'https://ituberus.github.io/tesl/thanks';
           }, 500);
 
         } else {
