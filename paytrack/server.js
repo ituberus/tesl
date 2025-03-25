@@ -17,23 +17,29 @@ const { randomUUID } = require('crypto');
 
 /*
   -------------
-  SQUARE SDK SETUP
+  SQUARE SDK SETUP (UPDATED FOR v42+)
   -------------
-  Using the new Node SDK. We import Client and ApiError only,
-  and we pass "sandbox" or "production" as a string to 'environment'.
+  Using the new Node SDK imports. 
+  Environment must be Environment.Sandbox or Environment.Production
+  rather than a raw string. Also keep ApiError if you want to catch 
+  Square-specific exceptions.
 */
-const { Client, ApiError } = require('square');
+const { Client, Environment, ApiError } = require('square');
 
 /*
-  Use environment as a string ('sandbox' or 'production'):
+  Use environment from your NODE_ENV. 
+  If you want a separate var for "sandbox" vs "production", do so, 
+  but here's a simple check:
 */
 const isProd = process.env.NODE_ENV === 'production';
+
+// Initialize the Square client properly
 const squareClient = new Client({
   accessToken: process.env.SQUARE_ACCESS_TOKEN,
-  environment: isProd ? 'production' : 'sandbox', 
+  environment: isProd ? Environment.Production : Environment.Sandbox,
 });
 
-// Now, from the new client, we can get the `paymentsApi`:
+// Now, from the new client, we can get the paymentsApi:
 const paymentsApi = squareClient.paymentsApi;
 const locationId = process.env.SQUARE_LOCATION_ID; // keep your location ID
 
@@ -602,7 +608,7 @@ app.post('/api/fb-conversion', async (req, res, next) => {
 });
 
 // ------------------------------------------------------
-// PROCESS SQUARE PAYMENT
+// PROCESS SQUARE PAYMENT (MAIN FIX APPLIED IN INITIALIZATION)
 // ------------------------------------------------------
 app.post('/process-square-payment', async (req, res) => {
   try {
