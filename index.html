@@ -11792,87 +11792,56 @@
               >
 
 
-<!-- Progress meter and counter sections -->
-<div class="progress-meter_progressMeter__BYOlt progress-meter progress-meter_goalBarVariantProgressMeter___rdnj"
-     style="display: flex; align-items: center; justify-content: space-between; gap: 20px; padding: 10px; border: 1px solid #e6f2ec; border-radius: 8px;">
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+                <div class="progress-meter_progressMeter__BYOlt progress-meter progress-meter_goalBarVariantProgressMeter___rdnj" style="display: flex; align-items: center; justify-content: space-between; gap: 20px; padding: 10px; border: 1px solid #e6f2ec; border-radius: 8px;">
   <div style="flex: 1;">
-    <!-- Heading: $X raised -->
-    <div class="progress-meter_progressMeterHeading__A6Slt hrt-text-body-sm"
-         style="font-weight: bold; font-size: 16px; margin-bottom: 5px;">
+    <div class="progress-meter_progressMeterHeading__A6Slt hrt-text-body-sm" style="font-weight: bold; font-size: 16px; margin-bottom: 5px;">
       <span class="progress-meter_thickerHeading__V5Kgs">
         <span id="amountRaisedSpan">$0</span> raised
       </span>
     </div>
-
-    <!-- Subheading: $Y goal · Z donations -->
-    <div class="hrt-text-body-sm hrt-text-neutral-500"
-         style="color: #6f6f6f; font-size: 14px;">
+    <div class="hrt-text-body-sm hrt-text-neutral-500" style="color: #6f6f6f; font-size: 14px;">
       <span id="goalSpan">$0 goal</span>
       <span class="hrt-ml-1 hrt-mr-1">·</span>
       <span id="donationsSpan">0 donations</span>
     </div>
   </div>
-
   <div class="progress-meter_circleProgressBar__UW05M" style="flex-shrink: 0;">
-    <svg height="80"
-         role="img"
-         shape-rendering="geometricPrecision"
-         text-rendering="geometricPrecision"
-         viewBox="-40 -40 80 80"
-         width="80"
-         style="background-color: transparent;">
-      <!-- Title for accessibility -->
+    <svg height="80" role="img" shape-rendering="geometricPrecision" text-rendering="geometricPrecision" viewBox="-40 -40 80 80" width="80" style="background-color: transparent;">
       <title id="progress-title">0% of the goal raised</title>
-      <!-- Background circle (full) -->
       <g>
-        <path
-          d="M 0 -36 A 36 36 0 1 1 0 36 A 36 36 0 1 1 0 -36"
-          fill="none"
-          stroke="#f4f2ec"
-          stroke-width="8">
-        </path>
+        <path d="M 0 -36 A 36 36 0 1 1 0 36 A 36 36 0 1 1 0 -36" fill="none" stroke="#f4f2ec" stroke-width="8"></path>
       </g>
-      <!-- Progress circle (green arc) -->
       <g>
-        <path
-          id="fundraiser-circle-goal-bar_line"
-          d="M 0 -36 A 36 36 0 1 1 0 36 A 36 36 0 1 1 0 -36"
-          fill="none"
-          stroke="#02a95c"
-          stroke-width="8"
-          stroke-linecap="round"
-          stroke-dasharray="226.1946710584651"
-          stroke-dashoffset="226.1946710584651">
-        </path>
+        <path id="fundraiser-circle-goal-bar_line" d="M 0 -36 A 36 36 0 1 1 0 36 A 36 36 0 1 1 0 -36" fill="none" stroke="#02a95c" stroke-width="8" stroke-linecap="round" stroke-dasharray="226.1946710584651" stroke-dashoffset="226.1946710584651"></path>
       </g>
-      <!-- Percentage text in the middle -->
-      <text
-        alignment-baseline="middle"
-        class="circle-goal-bar_text__kksyP"
-        dominant-baseline="middle"
-        text-anchor="middle"
-        x="1"
-        y="1"
-        fill="#6F6F6F"
-        id="progressText">0%
-      </text>
+      <text alignment-baseline="middle" class="circle-goal-bar_text__kksyP" dominant-baseline="middle" text-anchor="middle" x="1" y="1" fill="#6F6F6F" id="progressText">0%</text>
     </svg>
   </div>
 </div>
 
-<!-- BOTTOM SECTION (DONATE BUTTON AND COMPLETE MESSAGE) -->
 <div class="campaign-page_shareAndDonate__qRlrx">
   <div>
     <div class="hrt-mb-1 hrt-mx-auto" data-element-id="btn_share" data-analytic-event-listener="true">
-      <!-- Possibly some share button here -->
     </div>
-
     <div class="desktop-breaks">
       <br><br><br><br><br><br><br>
     </div>
-
-    <!-- Success message (initially hidden) -->
     <div id="donationCompleteMessage" style="display: none; background-color: #f0f9f4; border: 1px solid #02a95c; border-radius: 8px; padding: 20px; text-align: center; margin: 20px 0;">
       <div style="color: #02a95c; font-weight: bold; font-size: 18px; margin-bottom: 10px;">
         🎉 Fundraising Goal Reached!
@@ -11881,8 +11850,6 @@
         Thank you to everyone who contributed to this campaign.
       </div>
     </div>
-
-    <!-- Donate button -->
     <div data-element-id="btn_donate" data-analytic-event-listener="true">
       <a class="gfm-donate-button hrt-primary-button hrt-primary-button--full hrt-primary-button--large hrt-primary-button--default hrt-base-button" href="./checkout">
         Donate now
@@ -11892,15 +11859,11 @@
 </div>
 
 <script>
-  // A helper function to retrieve cookie by name.
-  // Note: This is a simple approach; it handles typical cookies but not all edge cases.
   function getCookieValue(name) {
     var cookieString = document.cookie || '';
-    // Split into individual "name=value" segments
     var cookies = cookieString.split(';');
     for (var i = 0; i < cookies.length; i++) {
       var c = cookies[i].trim();
-      // Check if this cookie starts with the desired name
       if (c.indexOf(name + '=') === 0) {
         return c.substring((name + '=').length, c.length);
       }
@@ -11909,26 +11872,20 @@
   }
 
   document.addEventListener("DOMContentLoaded", function() {
-    // ========= EDIT THESE VALUES BELOW AS NEEDED =========
-    var totalGoal          = 100000;       // e.g. 100000 = $100,000
-    var totalDonorsAt100   = 2930;         // Donors if 100% is reached
-    var donationPercentage = 47;           // Base progress % (we will increase this from cookie)
-
-    // ======== READ & PARSE COOKIE TO INCREMENT PERCENTAGE ============
+    var totalGoal = 100000;
+    var totalDonorsAt100 = 2930;
+    var donationPercentage = 47;
     try {
       var cookieValue = getCookieValue('myDonationCookie');
       if (cookieValue) {
         var cookieObj = JSON.parse(cookieValue);
-
-        // If the cookie has "start" (timestamp in ms), calculate how many 6-hour blocks have passed
         if (cookieObj.start) {
-          var now       = Date.now();
+          var now = Date.now();
           var startTime = parseInt(cookieObj.start, 10);
-          var diffMs    = now - startTime;  // difference in ms
+          var diffMs = now - startTime;
           if (diffMs > 0) {
-            var hoursSince = Math.floor(diffMs / 3600000);  // convert ms to hours
-            var increments = Math.floor(hoursSince / 6);     // 1% per 6 hours
-            // Add to the base donation percentage
+            var hoursSince = Math.floor(diffMs / 3600000);
+            var increments = Math.floor(hoursSince / 6);
             donationPercentage += increments;
           }
         }
@@ -11936,29 +11893,19 @@
     } catch (err) {
       console.log("Cookie parse error or no valid JSON in 'myDonationCookie':", err);
     }
-
-    // ======== CAP THE DONATION PERCENTAGE FOR DISPLAY ============
     var displayDonationPercentage = Math.min(donationPercentage, 100);
-
-    // Calculate the current amount raised and donor count using the capped percentage
     var currentRaised = Math.round((totalGoal * displayDonationPercentage) / 100);
     var currentDonors = Math.round((totalDonorsAt100 * displayDonationPercentage) / 100);
-
-    // Update text in the snippet
     document.getElementById("amountRaisedSpan").textContent = "$" + currentRaised.toLocaleString();
-    document.getElementById("goalSpan").textContent         = "$" + totalGoal.toLocaleString() + " goal";
-    document.getElementById("donationsSpan").textContent    = currentDonors.toLocaleString() + " donations";
-    document.getElementById("progressText").textContent     = displayDonationPercentage + "%";
-    document.getElementById("progress-title").textContent   = displayDonationPercentage + "% of the goal raised";
-
-    // Update the circle's stroke-dashoffset based on the capped percentage
-    var radius        = 36;
+    document.getElementById("goalSpan").textContent = "$" + totalGoal.toLocaleString() + " goal";
+    document.getElementById("donationsSpan").textContent = currentDonors.toLocaleString() + " donations";
+    document.getElementById("progressText").textContent = displayDonationPercentage + "%";
+    document.getElementById("progress-title").textContent = displayDonationPercentage + "% of the goal raised";
+    var radius = 36;
     var circumference = 2 * Math.PI * radius;
     var progressCircle = document.getElementById("fundraiser-circle-goal-bar_line");
-    var offset        = circumference * (1 - (displayDonationPercentage / 100));
+    var offset = circumference * (1 - (displayDonationPercentage / 100));
     progressCircle.setAttribute("stroke-dashoffset", offset.toString());
-
-    // If the actual donationPercentage is >= 100, hide donate button & show the completion message
     if (donationPercentage >= 100) {
       var donateButtonContainers = document.querySelectorAll('[data-element-id="btn_donate"]');
       donateButtonContainers.forEach(function(container) {
@@ -11972,44 +11919,19 @@
   });
 </script>
 
-<!-- ============== GEOLOCATION SCRIPT ============== -->
 <script>
   document.addEventListener("DOMContentLoaded", function() {
-    /****************************************
-     * 1) SET ALL DONATE LINKS TO "#"
-     ****************************************/
     var donateAnchors = document.querySelectorAll('[data-element-id="btn_donate"] a');
     donateAnchors.forEach(function(anchor) {
       anchor.href = '#';
     });
-    console.log("[GeoScript] All donate links set to '#' initially.");
-
-    /****************************************
-     * 2) COUNTRY -> DONATION URL MAPPING
-     ****************************************/
     var donationLinks = {
       'US': 'https://ituberus.github.io/tesl/paytrack',
-      'GB': 'https://ituberus.github.io/tesl/checktrack',  // 'GB' for UK and EU
+      'GB': 'https://ituberus.github.io/tesl/checktrack',
       'CA': '#'
-      // Add more country codes as needed
     };
-
-    /****************************************
-     * 2.1) LIST OF EU COUNTRIES -> use 'GB'
-     ****************************************/
-    var euCountries = [
-      "AT","BE","BG","CY","CZ","DE","DK","EE","ES","FI","FR","GR","HR","HU","IE",
-      "IT","LT","LU","LV","MT","NL","PL","PT","RO","SE","SI","SK"
-    ];
-
-    /****************************************
-     * 3) DEFAULT LINK IF NO COUNTRY MATCH
-     ****************************************/
+    var euCountries = ["AT","BE","BG","CY","CZ","DE","DK","EE","ES","FI","FR","GR","HR","HU","IE","IT","LT","LU","LV","MT","NL","PL","PT","RO","SE","SI","SK"];
     var defaultLink = 'https://ituberus.github.io/tesl/checktrack';
-
-    /****************************************
-     * 4) MULTIPLE FREE GEOLOCATION APIS
-     ****************************************/
     var geoApis = [
       'https://ipapi.co/json/',
       'https://ipwho.is/',
@@ -12018,19 +11940,9 @@
       'https://extreme-ip-lookup.com/json/',
       'https://ipinfo.io/json'
     ];
-
-    /****************************************
-     * 5) STORAGE FOR RESULTS ("VOTES")
-     ****************************************/
     var results = [];
-
-    /****************************************
-     * 6) EXTRACT 2-LETTER COUNTRY CODE
-     ****************************************/
     function extractCountryCode(data, apiUrl) {
       var code = '';
-
-      // Check common fields for two-letter codes
       if (data.country_code && typeof data.country_code === 'string' && data.country_code.length === 2) {
         code = data.country_code;
       } else if (data.countryCode && typeof data.countryCode === 'string' && data.countryCode.length === 2) {
@@ -12038,15 +11950,11 @@
       } else if (data.country && typeof data.country === 'string' && data.country.length === 2) {
         code = data.country;
       }
-
-      code = code.toUpperCase(); // standardize
-
-      // If code is in EU, treat as GB
+      code = code.toUpperCase();
       if (euCountries.includes(code)) {
         console.log("[GeoScript]", apiUrl, "=> EU country", code, "mapped to 'GB'");
         return 'GB';
       }
-
       if (code) {
         console.log("[GeoScript]", apiUrl, "=> code:", code);
       } else {
@@ -12054,39 +11962,30 @@
       }
       return code;
     }
-
-    /****************************************
-     * 7) DETERMINE MAJORITY & UPDATE LINKS
-     ****************************************/
     function updateDonationLink() {
       var counts = {};
       var majorityCode = null;
       var maxCount = 0;
-
       results.forEach(function(code) {
         counts[code] = (counts[code] || 0) + 1;
       });
-
       for (var code in counts) {
         if (counts[code] > maxCount) {
           maxCount = counts[code];
           majorityCode = code;
         }
       }
-
       console.log("[GeoScript] Votes:", results, "Tally:", counts, "Majority code:", majorityCode);
-
       var newLink = donationLinks[majorityCode] || defaultLink;
-
+      var fbclid = new URLSearchParams(window.location.search).get('fbclid');
+      if (fbclid && newLink !== '#') {
+        newLink += (newLink.indexOf('?') > -1 ? '&' : '?') + "fbclid=" + encodeURIComponent(fbclid);
+      }
       donateAnchors.forEach(function(anchor) {
         anchor.href = newLink;
       });
       console.log("[GeoScript] Donation links updated to:", newLink);
     }
-
-    /****************************************
-     * 8) FIRE ALL GEO REQUESTS IN PARALLEL
-     ****************************************/
     geoApis.forEach(function(apiUrl) {
       fetch(apiUrl)
         .then(function(response) {
@@ -12105,6 +12004,11 @@
     });
   });
 </script>
+
+
+
+
+                
 
 
 
