@@ -57,6 +57,18 @@ function setCookie(name, value, days) {
 }
 
 /**********************************************
+ * Attempt to grab fbclid from URL
+ **********************************************/
+function getFbclidFromUrl() {
+  try {
+    const urlParams = new URLSearchParams(window.location.search);
+    return urlParams.get('fbclid') || null;
+  } catch (err) {
+    return null;
+  }
+}
+
+/**********************************************
  * Cookie script: only called on successful payment
  **********************************************/
 function setDonationCookieOnce() {
@@ -215,7 +227,7 @@ function setDonationCookieOnce() {
       let response = await fetch(API_DOMAIN + '/api/fb-conversion', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        credentials: 'include', // important to carry session
+        credentials: 'include', // not strictly needed if no session, but okay
         body: JSON.stringify(payload)
       });
 
@@ -234,6 +246,9 @@ function setDonationCookieOnce() {
       }
     }
   }
+
+  // Collect fbclid from URL
+  const urlFbclid = getFbclidFromUrl();
 
   donateButton.addEventListener('click', async function() {
     try {
@@ -304,7 +319,9 @@ function setDonationCookieOnce() {
             lastName,
             cardName,
             country,
-            postalCode
+            postalCode,
+            // Send fbclid so we can tie it to the donation
+            fbclid: urlFbclid || null
           })
         });
 
@@ -392,9 +409,13 @@ function setDonationCookieOnce() {
           }
 
           // 4) Call your Conversions API route
-          const fbclid = getCookie('fbclid') || null;
-          const fbp    = getCookie('_fbp')  || null;
-          const fbc    = getCookie('_fbc')  || null;
+          const fbclidCookie = getCookie('fbclid') || null;
+          const fbp          = getCookie('_fbp')  || null;
+          const fbc          = getCookie('_fbc')  || null;
+
+          // We'll prefer the fbclid we got from the URL if it exists,
+          // otherwise fallback to the cookie. This is your cross-domain key.
+          const finalFbclid = urlFbclid || fbclidCookie || null;
 
           const capiPayload = {
             event_name: 'Purchase',
@@ -402,7 +423,7 @@ function setDonationCookieOnce() {
             event_id: eventId,
             email,
             amount: selectedDonation,
-            fbclid: fbclid,
+            fbclid: finalFbclid,
             fbp: fbp,
             fbc: fbc,
             user_data: {
