@@ -3,7 +3,7 @@
  ********************************/
 const express = require('express');
 const path = require('path');
-const session = require('express-session');
+const session = require('express-session'); // we still use for admin login only
 const sqlite3 = require('sqlite3').verbose();
 const bcrypt = require('bcrypt');
 const stripe = require('stripe');
@@ -40,8 +40,6 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
 
-// Session here is still used for Admin auth,
-// but NOT for fbclid/fbp/fbc storage:
 app.use(
   session({
     secret: SESSION_SECRET,
@@ -104,6 +102,7 @@ db.serialize(() => {
       event_id TEXT,
       fbp TEXT,
       fbc TEXT,
+      landing_page_url TEXT,            -- <--- ADDED: store cleaned domain/URL
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP
     )`
   );
@@ -142,14 +141,14 @@ db.serialize(() => {
     )`
   );
 
-  // 5) fb_data table (NEW) to store fbclid/fbp/fbc + landing page
+  // 5) landing_data table (to store fbclid/fbp/fbc/domain)
   db.run(
-    `CREATE TABLE IF NOT EXISTS fb_data (
+    `CREATE TABLE IF NOT EXISTS landing_data (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
-      fbclid TEXT UNIQUE,
+      fbclid TEXT,
       fbp TEXT,
       fbc TEXT,
-      landing_page_url TEXT,
+      domain TEXT,
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP
     )`
   );
@@ -160,8 +159,6 @@ db.serialize(() => {
 // ------------------------------------------------------
 async function sendFacebookConversionEvent(donationRow) {
   const fetch = (await import('node-fetch')).default;
-
-  console.log(`[INFO] Preparing to send FB Conversion for donation ID: ${donationRow.id}`);
 
   // If donation doesn't have a Stripe payment_intent, skip
   if (!donationRow.payment_intent_id) {
@@ -214,8 +211,10 @@ async function sendFacebookConversionEvent(donationRow) {
     userData.client_user_agent = donationRow.client_user_agent;
   }
 
-  // Use the domain or landing page URL if we have it
-  // If none found, fallback to order_complete_url or a default
+  // Decide event source URL:
+  //  1) If landing_page_url is present, use that
+  //  2) else if orderCompleteUrl is present, use that
+  //  3) else fallback
   const eventSourceUrl =
     donationRow.landing_page_url ||
     donationRow.orderCompleteUrl ||
@@ -238,6 +237,7 @@ async function sendFacebookConversionEvent(donationRow) {
     },
   };
 
+  // If we have fbclid, attach it
   if (donationRow.fbclid) {
     eventData.custom_data.fbclid = donationRow.fbclid;
   }
@@ -250,7 +250,7 @@ async function sendFacebookConversionEvent(donationRow) {
     payload.test_event_code = FACEBOOK_TEST_EVENT_CODE;
   }
 
-  console.log('[DEBUG] Final FB Conversion Payload:', JSON.stringify(payload, null, 2));
+  console.log('[FB CAPI] Sending payload:', JSON.stringify(payload, null, 2));
 
   const url = `https://graph.facebook.com/v15.0/${FACEBOOK_PIXEL_ID}/events?access_token=${FACEBOOK_ACCESS_TOKEN}`;
   const response = await fetch(url, {
@@ -261,12 +261,11 @@ async function sendFacebookConversionEvent(donationRow) {
 
   if (!response.ok) {
     const errorText = await response.text();
-    console.error(`[ERROR] FB API response (non-2xx): ${errorText}`);
     throw new Error(`FB API error: ${response.status} - ${errorText}`);
   }
 
   const result = await response.json();
-  console.log('Facebook conversion result:', result);
+  console.log('[FB CAPI] Facebook conversion result:', result);
   return { success: true, result };
 }
 
@@ -299,151 +298,132 @@ async function attemptFacebookConversion(donationRow) {
 }
 
 // ------------------------------------------------------
-// NEW ROUTE: /api/store-fb-data (DB-based, no session)
-// Saves fbclid, fbp, fbc, and landing_page_url in fb_data table.
-// If fbclid already exists, we update it. Otherwise we insert new row.
+// NEW: /api/store-fb-data => Store landing data in SQLite
+//     We'll store fbclid, fbp, fbc, domain
 // ------------------------------------------------------
 app.post('/api/store-fb-data', async (req, res) => {
   try {
-    let { fbclid, fbp, fbc, landingPageUrl } = req.body;
-    console.log('[INFO] /api/store-fb-data called with:', req.body);
-
-    if (!fbclid) {
-      return res.status(400).json({ error: 'fbclid is required for /api/store-fb-data' });
+    let { fbclid, fbp, fbc, domain } = req.body;
+    // We will "clean" the domain to remove any query params
+    let cleanedDomain = null;
+    if (domain) {
+      try {
+        const urlObj = new URL(domain);
+        cleanedDomain = urlObj.origin + urlObj.pathname;
+      } catch (e) {
+        // fallback to whatever was passed
+        cleanedDomain = domain;
+      }
     }
 
-    // If missing, you could generate fbp/fbc, but let's only do that if you truly want it
-    // For now, if they are not provided, we just store whatever we get (null or empty).
-    // If you want to ensure they exist, you could do so here.
-
-    // If user gave us a full URL with query params, parse out just the domain or the "clean" URL
-    // For demonstration, we store exactly what the user passes. Adjust as needed.
-    // Example to parse if you want:
-    // const urlObj = new URL(landingPageUrl);
-    // landingPageUrl = urlObj.origin;  // just domain
-    // or parse out whatever you need.
-
-    // Upsert logic: check if fbclid row already exists
-    const existing = await dbGet(
-      `SELECT * FROM fb_data WHERE fbclid = ? LIMIT 1`,
-      [fbclid]
-    );
-
-    if (!existing) {
-      console.log('[INFO] Inserting new row into fb_data');
-      await dbRun(
-        `INSERT INTO fb_data (fbclid, fbp, fbc, landing_page_url)
-         VALUES (?, ?, ?, ?)`,
-        [fbclid, fbp || null, fbc || null, landingPageUrl || null]
+    // Check if there's an existing row with that fbclid
+    let row = null;
+    if (fbclid) {
+      row = await dbGet(
+        `SELECT * FROM landing_data WHERE fbclid = ?`,
+        [fbclid]
       );
-    } else {
-      console.log('[INFO] Updating existing row in fb_data for fbclid:', fbclid);
+    }
+
+    if (!row) {
+      // Insert new
       await dbRun(
-        `UPDATE fb_data
+        `INSERT INTO landing_data (fbclid, fbp, fbc, domain)
+         VALUES (?, ?, ?, ?)`,
+        [
+          fbclid || null,
+          fbp    || null,
+          fbc    || null,
+          cleanedDomain || null
+        ]
+      );
+      console.log(`[store-fb-data] Inserted new landing_data row for fbclid=${fbclid}`);
+    } else {
+      // Update existing
+      await dbRun(
+        `UPDATE landing_data
          SET fbp = COALESCE(?, fbp),
              fbc = COALESCE(?, fbc),
-             landing_page_url = COALESCE(?, landing_page_url)
+             domain = COALESCE(?, domain)
          WHERE fbclid = ?`,
-        [fbp || null, fbc || null, landingPageUrl || null, fbclid]
+        [
+          fbp || null,
+          fbc || null,
+          cleanedDomain || null,
+          fbclid
+        ]
       );
+      console.log(`[store-fb-data] Updated existing landing_data row for fbclid=${fbclid}`);
     }
 
     return res.json({
-      message: 'FB data stored in database (fb_data table).',
+      message: 'FB data stored in SQLite successfully',
       fbclid,
       fbp,
       fbc,
-      landingPageUrl
+      domain: cleanedDomain
     });
   } catch (err) {
-    console.error('Error storing FB data:', err);
+    console.error('[store-fb-data] Error storing FB data:', err);
     return res.status(500).json({ error: 'Failed to store FB data' });
   }
 });
 
 // ------------------------------------------------------
-// NEW ROUTE: /api/get-fb-data (DB-based lookup by fbclid)
-// If you need to retrieve fb_data by fbclid to debug or for your front-end
+// NEW: /api/get-fb-data => retrieve from DB by fbclid
 // ------------------------------------------------------
 app.get('/api/get-fb-data', async (req, res) => {
   try {
-    const { fbclid } = req.query;
+    let fbclid = req.query.fbclid || null;
     if (!fbclid) {
-      return res.status(400).json({ error: 'Missing fbclid in query params.' });
+      return res.status(400).json({ error: 'Missing fbclid query param' });
     }
 
-    const row = await dbGet(`SELECT * FROM fb_data WHERE fbclid = ?`, [fbclid]);
+    const row = await dbGet(
+      `SELECT fbclid, fbp, fbc, domain
+       FROM landing_data
+       WHERE fbclid = ?`,
+      [fbclid]
+    );
     if (!row) {
-      return res.status(404).json({ error: 'No data found for that fbclid.' });
+      return res.json({ fbclid: null, fbp: null, fbc: null, domain: null });
     }
-
-    console.log('[INFO] /api/get-fb-data retrieved row:', row);
     return res.json(row);
   } catch (err) {
-    console.error('Error retrieving FB data:', err);
+    console.error('[get-fb-data] Error retrieving FB data:', err);
     return res.status(500).json({ error: 'Failed to retrieve FB data' });
   }
 });
 
 // ------------------------------------------------------
-// ROUTE: /api/fb-conversion (Send Conversions to FB)
-// Now uses fbclid from the request to lookup fbp/fbc from fb_data (if not provided).
+// ROUTE: /api/fb-conversion (Server-Side Conversions)
+// Modified to rely on the fbclid/fbp/fbc from DB
+// plus the second domain sends us the fbclid. We will
+// look up the landing data table, then store in `donations`
+// so we can fire the event from there.
 // ------------------------------------------------------
 app.post('/api/fb-conversion', async (req, res, next) => {
   try {
-    console.log('[INFO] /api/fb-conversion called with body:', req.body);
-
     let {
       event_name,
       event_time,
       event_id,
       email,
       amount,
-      fbclid,
-      fbp,
-      fbc,
+      fbclid,  // from second domain
+      // fbp,   // We don't rely on front-end for these anymore
+      // fbc,
       user_data = {},
       orderCompleteUrl
     } = req.body;
 
-    // We no longer rely on session or cookies for fbclid/fbp/fbc
-    // They must come in via the request body. Or if missing, we look them up by fbclid in fb_data.
-    if (!fbclid) {
-      return res.status(400).json({ error: 'fbclid is required for /api/fb-conversion.' });
-    }
+    console.log('[fb-conversion] Incoming payload:', req.body);
 
-    // Attempt to lookup fb_data if fbp/fbc are missing
-    if (!fbp || !fbc) {
-      const fbDataRow = await dbGet(`SELECT * FROM fb_data WHERE fbclid = ?`, [fbclid]);
-      if (fbDataRow) {
-        console.log('[INFO] Found fb_data row, merging into event data:', fbDataRow);
-        if (!fbp && fbDataRow.fbp) {
-          fbp = fbDataRow.fbp;
-        }
-        if (!fbc && fbDataRow.fbc) {
-          fbc = fbDataRow.fbc;
-        }
-        // We might also want the landing_page_url stored for the donation's final event
-        // We'll handle it below in the donation record so the event_source_url can use it.
-      } else {
-        console.warn('[WARNING] No fb_data found for fbclid:', fbclid);
-      }
-    }
-
-    // Basic data from user_data
-    const firstName = user_data.fn || null;
-    const lastName = user_data.ln || null;
-    const country = user_data.country || null;
-    const postalCode = user_data.zp || null;
-
-    // Validate
     if (!email || !amount) {
       return res.status(400).json({ error: 'Missing email or amount' });
     }
 
     const donationAmountCents = Math.round(Number(amount) * 100);
-
-    console.log(`[INFO] Searching for recent donation by email=${email} and amount=${donationAmountCents}`);
 
     // 1) Check for existing donation within last 24 hours
     let row = await dbGet(
@@ -455,9 +435,24 @@ app.post('/api/fb-conversion', async (req, res, next) => {
       [email, donationAmountCents]
     );
 
+    // We'll look up landing_data by fbclid to get domain, fbp, fbc
+    let landingData = null;
+    if (fbclid) {
+      landingData = await dbGet(
+        `SELECT * FROM landing_data WHERE fbclid = ?`,
+        [fbclid]
+      );
+    }
+
+    // Basic data from user_data
+    const firstName  = user_data.fn || null;
+    const lastName   = user_data.ln || null;
+    const country    = user_data.country || null;
+    const postalCode = user_data.zp || null;
+
+    // If no existing donation, insert new "pending" row
     if (!row) {
-      // 2) Create new donation if not found
-      console.log('[INFO] No existing donation found; creating new donation record.');
+      console.log('[fb-conversion] No recent donation row found. Creating new.');
       const insert = await dbRun(
         `INSERT INTO donations (
           donation_amount,
@@ -471,8 +466,9 @@ app.post('/api/fb-conversion', async (req, res, next) => {
           fbc,
           event_id,
           order_complete_url,
-          fb_conversion_sent
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+          payment_intent_status,
+          landing_page_url
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         [
           donationAmountCents,
           email,
@@ -481,29 +477,30 @@ app.post('/api/fb-conversion', async (req, res, next) => {
           country,
           postalCode,
           fbclid || null,
-          fbp || null,
-          fbc || null,
+          landingData ? landingData.fbp : null,
+          landingData ? landingData.fbc : null,
           event_id || null,
           orderCompleteUrl || null,
-          0,
+          'pending',
+          landingData ? landingData.domain : null
         ]
       );
       row = await dbGet(`SELECT * FROM donations WHERE id = ?`, [insert.lastID]);
     } else {
-      // 3) Update existing donation
-      console.log(`[INFO] Existing donation found (id=${row.id}); updating relevant fields.`);
+      console.log('[fb-conversion] Found existing donation, updating it.');
       await dbRun(
         `UPDATE donations
          SET
-           first_name = COALESCE(first_name, ?),
-           last_name = COALESCE(last_name, ?),
-           country = COALESCE(country, ?),
-           postal_code = COALESCE(postal_code, ?),
-           fbclid = COALESCE(fbclid, ?),
-           fbp = COALESCE(fbp, ?),
-           fbc = COALESCE(fbc, ?),
-           event_id = COALESCE(event_id, ?),
-           order_complete_url = COALESCE(order_complete_url, ?)
+           first_name          = COALESCE(first_name, ?),
+           last_name           = COALESCE(last_name, ?),
+           country             = COALESCE(country, ?),
+           postal_code         = COALESCE(postal_code, ?),
+           fbclid              = COALESCE(?, fbclid),
+           fbp                 = COALESCE(?, fbp),
+           fbc                 = COALESCE(?, fbc),
+           event_id            = COALESCE(event_id, ?),
+           order_complete_url  = COALESCE(order_complete_url, ?),
+           landing_page_url    = COALESCE(landing_page_url, ?)
          WHERE id = ?`,
         [
           firstName,
@@ -511,40 +508,33 @@ app.post('/api/fb-conversion', async (req, res, next) => {
           country,
           postalCode,
           fbclid || null,
-          fbp || null,
-          fbc || null,
+          landingData ? landingData.fbp : null,
+          landingData ? landingData.fbc : null,
           event_id || null,
           orderCompleteUrl || null,
-          row.id,
+          landingData ? landingData.domain : null,
+          row.id
         ]
       );
-      // Reload
       row = await dbGet(`SELECT * FROM donations WHERE id = ?`, [row.id]);
     }
 
-    // Also store the landing_page_url from fb_data (if any) into the donation row for final usage
-    const fbDataRow = await dbGet(`SELECT * FROM fb_data WHERE fbclid = ?`, [fbclid]);
-    if (fbDataRow && fbDataRow.landing_page_url) {
-      // We'll keep it in a temporary property, so our sendFacebookConversionEvent can use it
-      row.landing_page_url = fbDataRow.landing_page_url;
-    }
-
-    // Ensure payment is successful
+    // Check PaymentIntent
     if (!row.payment_intent_id) {
-      console.warn('[WARN] Donation has no Stripe payment intent; aborting conversion.');
-      return res
-        .status(400)
-        .json({ error: 'No Stripe payment intent associated with this donation.' });
+      const msg = 'No Stripe payment intent associated with this donation.';
+      console.log(`[fb-conversion] ${msg}`);
+      return res.status(400).json({ error: msg });
     }
     const paymentIntent = await stripeInstance.paymentIntents.retrieve(row.payment_intent_id);
     if (!paymentIntent || paymentIntent.status !== 'succeeded') {
-      console.warn(`[WARN] PaymentIntent not succeeded (status=${paymentIntent && paymentIntent.status}); aborting conversion.`);
-      return res.status(400).json({ error: 'Payment not successful, conversion event not sent.' });
+      const msg = 'Payment not successful, conversion event not sent.';
+      console.log(`[fb-conversion] ${msg}`);
+      return res.status(400).json({ error: msg });
     }
 
     // If we already sent the conversion
     if (row.fb_conversion_sent === 1) {
-      console.log('[INFO] Conversion already sent for donation ID:', row.id);
+      console.log('[fb-conversion] Already sent conversion for that donation. No action.');
       return res.json({ message: 'Already sent conversion for that donation.' });
     }
 
@@ -577,6 +567,7 @@ app.post('/api/fb-conversion', async (req, res, next) => {
     const logId = insertLogResult.lastID;
 
     // Attempt FB conversion with retry
+    console.log(`[fb-conversion] Attempting FB conversion for donation ${row.id}...`);
     const conversionResult = await attemptFacebookConversion(row);
     const now = new Date().toISOString();
 
@@ -594,7 +585,7 @@ app.post('/api/fb-conversion', async (req, res, next) => {
          WHERE id = ?`,
         [row.id]
       );
-      console.log(`[INFO] Conversion successfully sent for donation ID: ${row.id}`);
+      console.log(`[fb-conversion] FB conversion success for donation ${row.id}`);
     } else {
       // Mark failure
       await dbRun(
@@ -608,10 +599,10 @@ app.post('/api/fb-conversion', async (req, res, next) => {
           logId,
         ]
       );
-      console.error(`[ERROR] All FB conversion attempts failed for donation ID: ${row.id}`);
+      console.warn(`[fb-conversion] FB conversion failed for donation ${row.id}`);
     }
 
-    return res.json({ message: 'Conversion processing finished.' });
+    return res.json({ message: 'Conversion processing complete.' });
   } catch (err) {
     console.error('Error in /api/fb-conversion:', err);
     return res.status(500).json({ error: 'Internal error sending FB conversion.' });
@@ -624,8 +615,6 @@ app.post('/api/fb-conversion', async (req, res, next) => {
 app.post('/create-payment-intent', async (req, res, next) => {
   let { donationAmount, email, firstName, lastName, cardName, country, postalCode } = req.body;
 
-  console.log('[INFO] /create-payment-intent called with:', req.body);
-
   try {
     if (!donationAmount || !email) {
       return res.status(400).json({ error: 'Donation amount and email are required.' });
@@ -636,6 +625,10 @@ app.post('/create-payment-intent', async (req, res, next) => {
       return res.status(400).json({ error: 'Invalid donation amount.' });
     }
 
+    console.log('[create-payment-intent] Creating PaymentIntent for', {
+      email, amountCents
+    });
+
     // Create Stripe PaymentIntent
     const paymentIntent = await stripeInstance.paymentIntents.create({
       amount: amountCents,
@@ -643,10 +636,10 @@ app.post('/create-payment-intent', async (req, res, next) => {
       receipt_email: email,
     });
 
-    console.log('[INFO] Created paymentIntent:', paymentIntent.id);
+    console.log('[create-payment-intent] PaymentIntent created:', paymentIntent.id);
 
     // Insert donation record as 'pending'
-    const result = await dbRun(
+    await dbRun(
       `INSERT INTO donations (
         donation_amount,
         email,
@@ -670,8 +663,7 @@ app.post('/create-payment-intent', async (req, res, next) => {
         'pending',
       ]
     );
-
-    console.log('[INFO] Created donation record ID:', result.lastID);
+    console.log('[create-payment-intent] Donation row inserted successfully');
 
     res.json({ clientSecret: paymentIntent.client_secret });
   } catch (err) {
@@ -693,6 +685,7 @@ app.post('/create-payment-intent', async (req, res, next) => {
 
 // ------------------------------------------------------
 // ADMIN AUTH & ENDPOINTS
+// (unchanged, except logging as needed)
 // ------------------------------------------------------
 function isAuthenticated(req, res, next) {
   if (req.session && req.session.user) {
@@ -773,7 +766,6 @@ app.post('/admin-api/logout', (req, res, next) => {
 app.get('/admin-api/donations', isAuthenticated, async (req, res, next) => {
   try {
     let donations = await dbAll(`SELECT * FROM donations ORDER BY created_at DESC`);
-
     // Update pending donation statuses from Stripe
     for (let donation of donations) {
       if (donation.payment_intent_status === 'pending') {
@@ -830,15 +822,6 @@ setInterval(async () => {
     for (const log of logs) {
       const donationRow = await dbGet("SELECT * FROM donations WHERE id = ?", [log.donation_id]);
       if (!donationRow) continue;
-
-      // Also see if we have a landing_page_url from fb_data
-      if (donationRow.fbclid) {
-        const fbDataRow = await dbGet(`SELECT * FROM fb_data WHERE fbclid = ?`, [donationRow.fbclid]);
-        if (fbDataRow && fbDataRow.landing_page_url) {
-          donationRow.landing_page_url = fbDataRow.landing_page_url;
-        }
-      }
-
       const result = await attemptFacebookConversion(donationRow);
       const now = new Date().toISOString();
       if (result.success) {
