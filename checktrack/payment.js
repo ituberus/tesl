@@ -1,10 +1,4 @@
-<!--
-  Example file: donation.js (the second domain's front-end code)
-  Remember to update: `const API_DOMAIN = 'https://tesl-production-523c.up.railway.app'`
-  or whatever your backend domain is.
--->
 
-<script>
 /**********************************************
  * Add your railway link below
  **********************************************/
@@ -440,4 +434,4 @@ function setDonationCookieOnce() {
     }
   });
 })();
-</script>
+
