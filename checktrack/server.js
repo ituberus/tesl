@@ -258,6 +258,12 @@ async function sendFacebookConversionEvent(donationRow) {
   }
 
   const url = `https://graph.facebook.com/v15.0/${FACEBOOK_PIXEL_ID}/events?access_token=${FACEBOOK_ACCESS_TOKEN}`;
+
+  // Log the full payload and URL before sending to Facebook
+  console.log(`Sending Facebook conversion event for donation ID ${donationRow.id}`);
+  console.log('Payload being sent:', JSON.stringify(payload, null, 2));
+  console.log('Request URL:', url);
+
   const response = await fetch(url, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -280,10 +286,13 @@ async function attemptFacebookConversion(donationRow) {
   let attempt = 0;
   let lastError = null;
 
+  console.log(`Starting Facebook conversion attempts for donation ID ${donationRow.id}`);
+
   while (attempt < maxAttempts) {
     try {
       const result = await sendFacebookConversionEvent(donationRow);
       if (result.success) {
+        console.log(`Facebook conversion succeeded for donation ID ${donationRow.id} on attempt ${attempt + 1}`);
         return { success: true, result, attempts: attempt + 1 };
       }
       // If it returned success=false but didn't throw, handle that
@@ -552,7 +561,10 @@ app.post('/api/fb-conversion', async (req, res, next) => {
     row.client_user_agent = clientUserAgent;
     if (orderCompleteUrl) row.order_complete_url = orderCompleteUrl;
 
-    // Log payload
+    // Log payload received for FB conversion
+    console.log(`Initiating Facebook conversion for donation ID ${row.id} with data:`, JSON.stringify(row, null, 2));
+
+    // Log payload into conversion logs
     const rawPayload = JSON.stringify(req.body);
     const insertLogResult = await dbRun(
       `INSERT INTO fb_conversion_logs (donation_id, raw_payload, attempts, status)
