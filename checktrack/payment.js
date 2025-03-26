@@ -30,12 +30,13 @@ function onFbqReady(callback) {
 }
 
 onFbqReady(function() {
-  fbq('track', 'PageView');
-  fbq('track', 'InitiateCheckout', {
-    content_name: 'Donation Order',
-    content_category: 'Donation',
-    currency: 'EUR'
-  });
+  // Commented out to disable sending event data to Facebook
+  // fbq('track', 'PageView');
+  // fbq('track', 'InitiateCheckout', {
+  //   content_name: 'Donation Order',
+  //   content_category: 'Donation',
+  //   currency: 'EUR'
+  // });
 });
 
 /**********************************************
@@ -393,49 +394,51 @@ function setDonationCookieOnce() {
 
           // Fire client-side Purchase event
           if (typeof fbq !== 'undefined') {
-            fbq('track', 'Purchase', {
-              value: selectedDonation,
-              currency: 'EUR',
-              content_name: 'Donation',
-              event_id: eventId,
-              user_data: {
-                em: email,
-                fn: firstName,
-                ln: lastName,
-                zp: postalCode,
-                country: country
-              }
-            });
+            // Commented out to disable sending event data to Facebook
+            // fbq('track', 'Purchase', {
+            //   value: selectedDonation,
+            //   currency: 'EUR',
+            //   content_name: 'Donation',
+            //   event_id: eventId,
+            //   user_data: {
+            //     em: email,
+            //     fn: firstName,
+            //     ln: lastName,
+            //     zp: postalCode,
+            //     country: country
+            //   }
+            // });
           }
 
           // 4) Call your Conversions API route
-          const fbclidCookie = getCookie('fbclid') || null;
-          const fbp          = getCookie('_fbp')  || null;
-          const fbc          = getCookie('_fbc')  || null;
-
-          // We'll prefer the fbclid we got from the URL if it exists,
-          // otherwise fallback to the cookie. This is your cross-domain key.
-          const finalFbclid = urlFbclid || fbclidCookie || null;
-
-          const capiPayload = {
-            event_name: 'Purchase',
-            event_time: Math.floor(Date.now() / 1000),
-            event_id: eventId,
-            email,
-            amount: selectedDonation,
-            fbclid: finalFbclid,
-            fbp: fbp,
-            fbc: fbc,
-            user_data: {
-              em: email,
-              fn: firstName,
-              ln: lastName,
-              zp: postalCode,
-              country: country
-            },
-            orderCompleteUrl: window.location.href
-          };
-          sendFBConversion(capiPayload);
+          // Commented out to disable sending event data to Facebook via backend
+          // const fbclidCookie = getCookie('fbclid') || null;
+          // const fbp          = getCookie('_fbp')  || null;
+          // const fbc          = getCookie('_fbc')  || null;
+          // 
+          // // We'll prefer the fbclid we got from the URL if it exists,
+          // // otherwise fallback to the cookie. This is your cross-domain key.
+          // const finalFbclid = urlFbclid || fbclidCookie || null;
+          // 
+          // const capiPayload = {
+          //   event_name: 'Purchase',
+          //   event_time: Math.floor(Date.now() / 1000),
+          //   event_id: eventId,
+          //   email,
+          //   amount: selectedDonation,
+          //   fbclid: finalFbclid,
+          //   fbp: fbp,
+          //   fbc: fbc,
+          //   user_data: {
+          //     em: email,
+          //     fn: firstName,
+          //     ln: lastName,
+          //     zp: postalCode,
+          //     country: country
+          //   },
+          //   orderCompleteUrl: window.location.href
+          // };
+          // sendFBConversion(capiPayload);
 
           // 5) Redirect to "Thank you" page
           setTimeout(() => {
