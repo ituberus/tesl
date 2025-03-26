@@ -1,7 +1,8 @@
+
 /**********************************************
  * Add your railway link below
  **********************************************/
-const API_DOMAIN = 'https://tesl-production-523c.up.railway.app';
+const API_DOMAIN = 'https://tesl-production-523c.up.railway.app'; // or your actual domain
 const FACEBOOK_PIXEL_ID = '1155603432794001'; // your actual Pixel ID
 
 /**********************************************
@@ -20,24 +21,11 @@ const FACEBOOK_PIXEL_ID = '1155603432794001'; // your actual Pixel ID
 // Initialize pixel
 fbq('init', FACEBOOK_PIXEL_ID);
 
-// Wait for fbq to be ready, then fire standard events
-function onFbqReady(callback) {
-  if (window.fbq && window.fbq.loaded) {
-    callback();
-  } else {
-    setTimeout(function() { onFbqReady(callback); }, 50);
-  }
-}
+// Basic PageView tracking
+fbq('track', 'PageView');
 
-onFbqReady(function() {
-  // Commented out to disable sending event data to Facebook
-  // fbq('track', 'PageView');
-  // fbq('track', 'InitiateCheckout', {
-  //   content_name: 'Donation Order',
-  //   content_category: 'Donation',
-  //   currency: 'EUR'
-  // });
-});
+// We do NOT call fbq('track','Purchase') here.
+// All "Purchase" events will be handled server-side via Conversions API.
 
 /**********************************************
  * Helper Functions: getCookie, setCookie
@@ -58,27 +46,13 @@ function setCookie(name, value, days) {
 }
 
 /**********************************************
- * Attempt to grab fbclid from URL
- **********************************************/
-function getFbclidFromUrl() {
-  try {
-    const urlParams = new URLSearchParams(window.location.search);
-    return urlParams.get('fbclid') || null;
-  } catch (err) {
-    return null;
-  }
-}
-
-/**********************************************
  * Cookie script: only called on successful payment
  **********************************************/
 function setDonationCookieOnce() {
   // =================== START OF COOKIE SCRIPT ===================
   (function() {
-    // Name of the cookie to use
     var cookieName = "myDonationCookie";
 
-    // Helper to read a cookie by name
     function localGetCookie(name) {
       var value = "; " + document.cookie;
       var parts = value.split("; " + name + "=");
@@ -87,7 +61,6 @@ function setDonationCookieOnce() {
       }
     }
 
-    // Helper to set a cookie (default = 30 days expiry)
     function localSetCookie(name, value, days) {
       var expires = "";
       if (days) {
@@ -98,7 +71,6 @@ function setDonationCookieOnce() {
       document.cookie = name + "=" + value + expires + "; path=/";
     }
 
-    // Attempt to read existing cookie data
     var dataStr = localGetCookie(cookieName);
     var data;
     try {
@@ -107,42 +79,28 @@ function setDonationCookieOnce() {
       data = null;
     }
 
-    // Current time in ms
     var now = Date.now();
 
-    // If no valid cookie found, create a new one
     if (!data || !data.start) {
       data = {
-        start: now,           // timestamp when we first created the cookie
-        incrementsUsed: 0     // how many +1% increments we have already applied
+        start: now,
+        incrementsUsed: 0
       };
-      localSetCookie(cookieName, JSON.stringify(data), 30); // store for 30 days
+      localSetCookie(cookieName, JSON.stringify(data), 30);
     }
 
-    // Calculate how many hours have passed since the "start"
     var hoursPassed = (now - data.start) / (1000 * 60 * 60);
-
-    // For every 4 hours, we should add +1%
     var totalIncrementsSoFar = Math.floor(hoursPassed / 4);
-
-    // Only add the difference between new increments and what we used before
     var newIncrements = totalIncrementsSoFar - data.incrementsUsed;
 
-    // If we have a global donationPercentage, then apply the increments
     if (typeof donationPercentage !== "undefined" && newIncrements > 0) {
       donationPercentage += newIncrements;
-
-      // Clamp at 100% maximum
       if (donationPercentage > 100) {
         donationPercentage = 100;
       }
-
-      // If it hits 100, set a global flag (in case you want to do something else)
       if (donationPercentage >= 100) {
         window.donationComplete = true;
       }
-
-      // Update incrementsUsed and save cookie
       data.incrementsUsed = totalIncrementsSoFar;
       localSetCookie(cookieName, JSON.stringify(data), 30);
     }
@@ -151,7 +109,7 @@ function setDonationCookieOnce() {
 }
 
 /**********************************************
- * PAYMENT CODE
+ * PAYMENT CODE (Second Domain)
  **********************************************/
 (function() {
   let selectedDonation = 0;
@@ -225,10 +183,11 @@ function setDonationCookieOnce() {
   // This is the function that calls the backend Conversions API route
   async function sendFBConversion(payload, attempt = 1) {
     try {
+      console.log('[DEBUG] Sending FB conversion payload to server:', payload);
       let response = await fetch(API_DOMAIN + '/api/fb-conversion', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        credentials: 'include', // not strictly needed if no session, but okay
+        credentials: 'include', // if needed
         body: JSON.stringify(payload)
       });
 
@@ -237,7 +196,7 @@ function setDonationCookieOnce() {
         throw new Error(`Server responded with ${response.status}: ${text}`);
       }
       const jsonData = await response.json();
-      console.log('CAPI Response:', jsonData);
+      console.log('[INFO] /api/fb-conversion response:', jsonData);
 
     } catch (error) {
       console.error(`CAPI Error (Attempt ${attempt}):`, error);
@@ -247,9 +206,6 @@ function setDonationCookieOnce() {
       }
     }
   }
-
-  // Collect fbclid from URL
-  const urlFbclid = getFbclidFromUrl();
 
   donateButton.addEventListener('click', async function() {
     try {
@@ -320,9 +276,7 @@ function setDonationCookieOnce() {
             lastName,
             cardName,
             country,
-            postalCode,
-            // Send fbclid so we can tie it to the donation
-            fbclid: urlFbclid || null
+            postalCode
           })
         });
 
@@ -376,7 +330,7 @@ function setDonationCookieOnce() {
           // Generate unique event_id
           const eventId = `order_${Date.now()}_${Math.random().toString(36).substr(2, 9).toUpperCase()}`;
 
-          // Save receipt cookie
+          // Save receipt cookie (optional)
           const receiptData = {
             amount: selectedDonation,
             email,
@@ -392,53 +346,31 @@ function setDonationCookieOnce() {
           setDonationCookieOnce();
           // ------------------------------------------
 
-          // Fire client-side Purchase event
-          if (typeof fbq !== 'undefined') {
-            // Commented out to disable sending event data to Facebook
-            // fbq('track', 'Purchase', {
-            //   value: selectedDonation,
-            //   currency: 'EUR',
-            //   content_name: 'Donation',
-            //   event_id: eventId,
-            //   user_data: {
-            //     em: email,
-            //     fn: firstName,
-            //     ln: lastName,
-            //     zp: postalCode,
-            //     country: country
-            //   }
-            // });
-          }
+          // 4) Call your Conversions API route (server-based)
+          // In a multi-domain scenario, you pass the same fbclid from your query param or from a cookie:
+          const fbclid = getCookie('fbclid') || null; 
+          const fbp    = getCookie('_fbp')  || null;
+          const fbc    = getCookie('_fbc')  || null;
 
-          // 4) Call your Conversions API route
-          // Commented out to disable sending event data to Facebook via backend
-          // const fbclidCookie = getCookie('fbclid') || null;
-          // const fbp          = getCookie('_fbp')  || null;
-          // const fbc          = getCookie('_fbc')  || null;
-          // 
-          // // We'll prefer the fbclid we got from the URL if it exists,
-          // // otherwise fallback to the cookie. This is your cross-domain key.
-          // const finalFbclid = urlFbclid || fbclidCookie || null;
-          // 
-          // const capiPayload = {
-          //   event_name: 'Purchase',
-          //   event_time: Math.floor(Date.now() / 1000),
-          //   event_id: eventId,
-          //   email,
-          //   amount: selectedDonation,
-          //   fbclid: finalFbclid,
-          //   fbp: fbp,
-          //   fbc: fbc,
-          //   user_data: {
-          //     em: email,
-          //     fn: firstName,
-          //     ln: lastName,
-          //     zp: postalCode,
-          //     country: country
-          //   },
-          //   orderCompleteUrl: window.location.href
-          // };
-          // sendFBConversion(capiPayload);
+          const capiPayload = {
+            event_name: 'Purchase',
+            event_time: Math.floor(Date.now() / 1000),
+            event_id: eventId,
+            email,
+            amount: selectedDonation,
+            fbclid: fbclid,
+            fbp: fbp,
+            fbc: fbc,
+            user_data: {
+              em: email,
+              fn: firstName,
+              ln: lastName,
+              zp: postalCode,
+              country: country
+            },
+            orderCompleteUrl: window.location.href
+          };
+          sendFBConversion(capiPayload);
 
           // 5) Redirect to "Thank you" page
           setTimeout(() => {
@@ -460,3 +392,4 @@ function setDonationCookieOnce() {
     }
   });
 })();
+
