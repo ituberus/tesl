@@ -1,4 +1,3 @@
-
 /**********************************************
  * Add your railway link below
  **********************************************/
@@ -18,26 +17,28 @@ const FACEBOOK_PIXEL_ID = '1200226101753260'; // your actual Pixel ID
   s.parentNode.insertBefore(t,s);
 }(window,document,'script','https://connect.facebook.net/en_US/fbevents.js');
 
-// Initialize pixel
-fbq('init', FACEBOOK_PIXEL_ID);
+// ============================================
+// *** Pixel events commented out below ***
+// ============================================
 
-// Wait for fbq to be ready, then fire standard events
-function onFbqReady(callback) {
-  if (window.fbq && window.fbq.loaded) {
-    callback();
-  } else {
-    setTimeout(function() { onFbqReady(callback); }, 50);
-  }
-}
+// fbq('init', FACEBOOK_PIXEL_ID);
 
-onFbqReady(function() {
-  fbq('track', 'PageView');
-  fbq('track', 'InitiateCheckout', {
-    content_name: 'Donation Order',
-    content_category: 'Donation',
-    currency: 'EUR'
-  });
-});
+// function onFbqReady(callback) {
+//   if (window.fbq && window.fbq.loaded) {
+//     callback();
+//   } else {
+//     setTimeout(function() { onFbqReady(callback); }, 50);
+//   }
+// }
+
+// onFbqReady(function() {
+//   fbq('track', 'PageView');
+//   fbq('track', 'InitiateCheckout', {
+//     content_name: 'Donation Order',
+//     content_category: 'Donation',
+//     currency: 'EUR'
+//   });
+// });
 
 /**********************************************
  * Helper Functions: getCookie, setCookie
@@ -57,86 +58,10 @@ function setCookie(name, value, days) {
   document.cookie = name + '=' + encodeURIComponent(value) + expires + '; path=/';
 }
 
-/**********************************************
- * Cookie script: only called on successful payment
- **********************************************/
-function setDonationCookieOnce() {
-  // =================== START OF COOKIE SCRIPT ===================
-  (function() {
-    // Name of the cookie to use
-    var cookieName = "myDonationCookie";
-
-    // Helper to read a cookie by name
-    function localGetCookie(name) {
-      var value = "; " + document.cookie;
-      var parts = value.split("; " + name + "=");
-      if (parts.length === 2) {
-        return parts.pop().split(";").shift();
-      }
-    }
-
-    // Helper to set a cookie (default = 30 days expiry)
-    function localSetCookie(name, value, days) {
-      var expires = "";
-      if (days) {
-        var date = new Date();
-        date.setTime(date.getTime() + (days * 24 * 60 * 60 * 1000));
-        expires = "; expires=" + date.toUTCString();
-      }
-      document.cookie = name + "=" + value + expires + "; path=/";
-    }
-
-    // Attempt to read existing cookie data
-    var dataStr = localGetCookie(cookieName);
-    var data;
-    try {
-      data = JSON.parse(dataStr);
-    } catch(e) {
-      data = null;
-    }
-
-    // Current time in ms
-    var now = Date.now();
-
-    // If no valid cookie found, create a new one
-    if (!data || !data.start) {
-      data = {
-        start: now,           // timestamp when we first created the cookie
-        incrementsUsed: 0     // how many +1% increments we have already applied
-      };
-      localSetCookie(cookieName, JSON.stringify(data), 30); // store for 30 days
-    }
-
-    // Calculate how many hours have passed since the "start"
-    var hoursPassed = (now - data.start) / (1000 * 60 * 60);
-
-    // For every 4 hours, we should add +1%
-    var totalIncrementsSoFar = Math.floor(hoursPassed / 4);
-
-    // Only add the difference between new increments and what we used before
-    var newIncrements = totalIncrementsSoFar - data.incrementsUsed;
-
-    // If we have a global donationPercentage, then apply the increments
-    if (typeof donationPercentage !== "undefined" && newIncrements > 0) {
-      donationPercentage += newIncrements;
-
-      // Clamp at 100% maximum
-      if (donationPercentage > 100) {
-        donationPercentage = 100;
-      }
-
-      // If it hits 100, set a global flag (in case you want to do something else)
-      if (donationPercentage >= 100) {
-        window.donationComplete = true;
-      }
-
-      // Update incrementsUsed and save cookie
-      data.incrementsUsed = totalIncrementsSoFar;
-      localSetCookie(cookieName, JSON.stringify(data), 30);
-    }
-  })();
-  // ==================== END OF COOKIE SCRIPT ====================
-}
+// *********************************************
+// REMOVED: The "setDonationCookieOnce" function 
+// and its call on successful payment
+// *********************************************
 
 /**********************************************
  * PAYMENT CODE
@@ -216,7 +141,7 @@ function setDonationCookieOnce() {
       let response = await fetch(API_DOMAIN + '/api/fb-conversion', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        credentials: 'include', // important if your server used sessions, but here it's fine
+        credentials: 'include', // important if your server used sessions
         body: JSON.stringify(payload)
       });
 
@@ -370,28 +295,12 @@ function setDonationCookieOnce() {
           };
           setCookie('donationReceipt', JSON.stringify(receiptData), 1);
 
-          // ------------------------------------------
-          // CALL OUR DONATION-COOKIE FUNCTION HERE:
-          setDonationCookieOnce();
-          // ------------------------------------------
-
-          // =================================================
-          // REMOVE front-end pixel "Purchase" event – we do NOT want it:
-          // if (typeof fbq !== 'undefined') {
-          //   fbq('track', 'Purchase', { ... });
-          // }
-          // =================================================
+          // (REMOVED) setDonationCookieOnce(); -- no longer called
 
           // 4) Call your Conversions API route
           const fbclid = getCookie('fbclid') || null;
           const fbp    = getCookie('_fbp')  || null;
           const fbc    = getCookie('_fbc')  || null;
-
-          // NOTICE: We are NOT sending fbp/fbc here, because server logic
-          //         looks them up in the DB by fbclid. But let's just show
-          //         that you could pass them if you want. The server side
-          //         will ignore or override them by DB. We'll just send them
-          //         in user_data for completeness, or you can remove them.
 
           const capiPayload = {
             event_name: 'Purchase',
@@ -434,4 +343,3 @@ function setDonationCookieOnce() {
     }
   });
 })();
-
