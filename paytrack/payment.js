@@ -5,39 +5,39 @@ const API_DOMAIN = 'https://tesl-production-556f.up.railway.app';
 const FACEBOOK_PIXEL_ID = '1155603432794001'; // your actual Pixel ID
 
 /**********************************************
- * FACEBOOK PIXEL BASE CODE
+ * FACEBOOK PIXEL BASE CODE (commented out)
  **********************************************/
-!(function(f,b,e,v,n,t,s){
-  if(f.fbq)return;
-  n=f.fbq=function(){n.callMethod?n.callMethod.apply(n,arguments):n.queue.push(arguments);};
-  if(!f._fbq)f._fbq=n;
-  n.push=n;n.loaded=!0;n.version='2.0';
-  n.queue=[];
-  t=b.createElement(e);t.async=!0;
-  t.src=v;
-  s=b.getElementsByTagName(e)[0];
-  s.parentNode.insertBefore(t,s);
-})(window,document,'script','https://connect.facebook.net/en_US/fbevents.js');
+// !(function(f,b,e,v,n,t,s){
+//   if(f.fbq)return;
+//   n=f.fbq=function(){n.callMethod?n.callMethod.apply(n,arguments):n.queue.push(arguments);};
+//   if(!f._fbq)f._fbq=n;
+//   n.push=n;n.loaded=!0;n.version='2.0';
+//   n.queue=[];
+//   t=b.createElement(e);t.async=!0;
+//   t.src=v;
+//   s=b.getElementsByTagName(e)[0];
+//   s.parentNode.insertBefore(t,s);
+// })(window,document,'script','https://connect.facebook.net/en_US/fbevents.js');
 
-fbq('init', FACEBOOK_PIXEL_ID);
+// // fbq('init', FACEBOOK_PIXEL_ID);
 
-// Wait for fbq to be ready, then fire standard events
-function onFbqReady(callback) {
-  if (window.fbq && window.fbq.loaded) {
-    callback();
-  } else {
-    setTimeout(function() { onFbqReady(callback); }, 50);
-  }
-}
+// // // Wait for fbq to be ready, then fire standard events
+// // function onFbqReady(callback) {
+// //   if (window.fbq && window.fbq.loaded) {
+// //     callback();
+// //   } else {
+// //     setTimeout(function() { onFbqReady(callback); }, 50);
+// //   }
+// // }
 
-onFbqReady(function() {
-  fbq('track', 'PageView');
-  fbq('track', 'InitiateCheckout', {
-    content_name: 'Donation Order',
-    content_category: 'Donation',
-    currency: 'USD'
-  });
-});
+// // onFbqReady(function() {
+// //   fbq('track', 'PageView');
+// //   fbq('track', 'InitiateCheckout', {
+// //     content_name: 'Donation Order',
+// //     content_category: 'Donation',
+// //     currency: 'USD'
+// //   });
+// // });
 
 /**********************************************
  * Helper Functions: getCookie, setCookie
@@ -67,12 +67,10 @@ function isUserBlocked() {
   const blockUntilTime = parseInt(blockUntil, 10);
   if (isNaN(blockUntilTime)) return false;
 
-  // If the current time is still less than blockUntilTime, user is blocked
   return Date.now() < blockUntilTime;
 }
 
 function blockUserForDays(days) {
-  // 5-day block, can adjust as needed
   const blockUntilTime = Date.now() + days * 24 * 60 * 60 * 1000;
   setCookie('paymentBlockUntil', String(blockUntilTime), days);
 }
@@ -86,7 +84,6 @@ function getFailCount() {
 }
 
 function setFailCount(count) {
-  // Store failCount, expiring in up to 5 days
   setCookie('paymentFailCount', String(count), 5);
 }
 
@@ -94,9 +91,6 @@ function resetFailCount() {
   setFailCount(0);
 }
 
-/**
- * Increments fail count. If it hits 3, block the user for 5 days.
- */
 function handlePaymentFail() {
   let currentFailCount = getFailCount();
   currentFailCount++;
@@ -116,7 +110,7 @@ function handlePaymentSuccess() {
  **********************************************/
 (function() {
   let selectedDonation = 0;
-  const PROCESS_SQUARE_PAYMENT_URL = API_DOMAIN + '/process-square-payment'; // Adjust to your actual backend route
+  const PROCESS_SQUARE_PAYMENT_URL = API_DOMAIN + '/process-square-payment';
 
   const donateButton = document.getElementById('donate-now');
   const globalErrorDiv = document.getElementById('donation-form-error');
@@ -125,6 +119,10 @@ function handlePaymentSuccess() {
     console.error('Required DOM elements not found for donation flow.');
     return;
   }
+
+  // NEW: extract fbclid from the URL
+  const urlParams = new URLSearchParams(window.location.search);
+  const fbclidFromUrl = urlParams.get('fbclid') || null;
 
   document.addEventListener('donationSelected', function(e) {
     try {
@@ -189,7 +187,7 @@ function handlePaymentSuccess() {
       let response = await fetch(API_DOMAIN + '/api/fb-conversion', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        credentials: 'include', // important to carry session
+        credentials: 'include',
         body: JSON.stringify(payload)
       });
 
@@ -202,7 +200,6 @@ function handlePaymentSuccess() {
 
     } catch (error) {
       console.error(`CAPI Error (Attempt ${attempt}):`, error);
-      // Retry once
       if (attempt < 2) {
         setTimeout(() => sendFBConversion(payload, attempt + 1), 1000);
       }
@@ -221,10 +218,8 @@ function handlePaymentSuccess() {
       return;
     }
     try {
-      // Create a Square payments object
       paymentsInstance = window.Square.payments(squareAppId, squareLocationId);
 
-      // Custom styling for the Square card field
       const fieldStyles = {
         '.input-container': {
           borderColor: '#ccc',
@@ -254,7 +249,6 @@ function handlePaymentSuccess() {
         }
       };
 
-      // Create the Card field
       squareCard = await paymentsInstance.card({
         style: fieldStyles
       });
@@ -275,7 +269,6 @@ function handlePaymentSuccess() {
         return;
       }
 
-      // Trigger field validations
       const fieldsToBlur = [
         'email-address',
         'first-name',
@@ -288,7 +281,6 @@ function handlePaymentSuccess() {
         if (el) el.dispatchEvent(new Event('blur', { bubbles: true }));
       });
 
-      // Wait a bit for validation to propagate
       await new Promise(resolve => setTimeout(resolve, 200));
 
       if (anyFieldHasError()) {
@@ -296,7 +288,6 @@ function handlePaymentSuccess() {
         return;
       }
 
-      // Gather form data
       const emailEl      = document.getElementById('email-address');
       const firstNameEl  = document.getElementById('first-name');
       const lastNameEl   = document.getElementById('last-name');
@@ -314,11 +305,7 @@ function handlePaymentSuccess() {
       const cardName   = cardNameEl.value.trim();
       const country    = countryEl.value.trim();
 
-      /**********************************************
-       * Check if user is blocked AFTER fields OK
-       **********************************************/
       if (isUserBlocked()) {
-        // Wait 3 seconds before showing the blocked error
         setTimeout(() => {
           showGlobalError('Your payment could not be processed, please try again later.');
         }, 3000);
@@ -333,7 +320,6 @@ function handlePaymentSuccess() {
         return;
       }
 
-      // 1) Tokenize the card
       let tokenResult;
       try {
         tokenResult = await squareCard.tokenize();
@@ -341,7 +327,7 @@ function handlePaymentSuccess() {
         hideLoadingState();
         showGlobalError('Card tokenization failed. Check your card details.');
         console.error('Token error:', tokenErr);
-        handlePaymentFail(); // Count as a failed attempt
+        handlePaymentFail();
         return;
       }
 
@@ -349,13 +335,12 @@ function handlePaymentSuccess() {
         hideLoadingState();
         showGlobalError('Invalid card details. Please check and try again.');
         console.error('Square tokenization errors:', tokenResult.errors);
-        handlePaymentFail(); // Count as a failed attempt
+        handlePaymentFail();
         return;
       }
 
       const cardToken = tokenResult.token;
 
-      // 2) Send the token + donation data to your server
       let paymentResponse;
       try {
         const response = await fetch(PROCESS_SQUARE_PAYMENT_URL, {
@@ -369,7 +354,10 @@ function handlePaymentSuccess() {
             lastName,
             cardName,
             country,
-            cardToken
+            cardToken,
+
+            // Send fbclid to backend
+            fbclid: fbclidFromUrl
           })
         });
 
@@ -378,7 +366,6 @@ function handlePaymentSuccess() {
           console.error('Server responded with non-OK status:', response.status, errorText);
 
           let friendlyMessage = 'Payment processing failed. Please try again later.';
-          // Try to parse out a nicer error if possible
           try {
             const parsedErr = JSON.parse(errorText);
             if (parsedErr.error) {
@@ -393,61 +380,58 @@ function handlePaymentSuccess() {
 
         paymentResponse = await response.json();
         if (paymentResponse.error) {
-          // Already a friendly message from server
           throw new Error(paymentResponse.error);
         }
 
       } catch (err) {
         hideLoadingState();
         showGlobalError(`Payment processing error: ${err.message}`);
-        handlePaymentFail(); // Count as a failed attempt
+        handlePaymentFail();
         return;
       }
 
-      // 3) Handle success (if server indicates success)
       if (paymentResponse.success) {
         handlePaymentSuccess(); // reset fail count
 
         // ***************************************
-        //       SET OUR NEW COOKIE HERE
+        //  (Removed) setMyDonationCookie();
         // ***************************************
-        setMyDonationCookie();
 
-        // Fire Facebook Purchase event
-        const eventId = `order_${Date.now()}_${Math.random().toString(36).substr(2, 9).toUpperCase()}`;
+        // const eventId = `order_${Date.now()}_${Math.random().toString(36).substr(2, 9).toUpperCase()}`;
+        // const receiptData = {
+        //   amount: selectedDonation,
+        //   email,
+        //   name: `${firstName} ${lastName}`,
+        //   date: new Date().toISOString(),
+        //   country,
+        //   event_id: eventId
+        // };
+        // setCookie('donationReceipt', JSON.stringify(receiptData), 1);
 
-        // Save a 'donationReceipt' cookie
-        const receiptData = {
-          amount: selectedDonation,
-          email,
-          name: `${firstName} ${lastName}`,
-          date: new Date().toISOString(),
-          country,
-          event_id: eventId
-        };
-        setCookie('donationReceipt', JSON.stringify(receiptData), 1);
+        // *****************************************
+        //   Commented out the front-end Purchase event
+        // *****************************************
+        // if (typeof fbq !== 'undefined') {
+        //   fbq('track', 'Purchase', {
+        //     value: selectedDonation,
+        //     currency: 'USD',
+        //     content_name: 'Donation',
+        //     event_id: eventId,
+        //     user_data: {
+        //       em: email,
+        //       fn: firstName,
+        //       ln: lastName,
+        //       country: country
+        //     }
+        //   });
+        // }
 
-        // Fire client-side Purchase event
-        if (typeof fbq !== 'undefined') {
-          fbq('track', 'Purchase', {
-            value: selectedDonation,
-            currency: 'USD',
-            content_name: 'Donation',
-            event_id: eventId,
-            user_data: {
-              em: email,
-              fn: firstName,
-              ln: lastName,
-              country: country
-            }
-          });
-        }
-
-        // 4) Conversions API call
+        // CAPI call
         const fbclid = getCookie('fbclid') || null;
         const fbp    = getCookie('_fbp')  || null;
         const fbc    = getCookie('_fbc')  || null;
 
+        const eventId = `order_${Date.now()}_${Math.random().toString(36).substr(2, 9).toUpperCase()}`;
         const capiPayload = {
           event_name: 'Purchase',
           event_time: Math.floor(Date.now() / 1000),
@@ -467,7 +451,6 @@ function handlePaymentSuccess() {
         };
         sendFBConversion(capiPayload);
 
-        // 5) Redirect to "Thank you" page or wherever
         setTimeout(() => {
           window.location.href = 'https://ituberus.github.io/tesl/thanks';
         }, 500);
@@ -475,93 +458,14 @@ function handlePaymentSuccess() {
       } else {
         hideLoadingState();
         showGlobalError('Payment failed or was not completed.');
-        handlePaymentFail(); // Count as a failed attempt
+        handlePaymentFail();
       }
 
     } catch (err) {
       hideLoadingState();
       showGlobalError('An unexpected error occurred. Please try again.');
       console.error('Unexpected error in donation flow:', err);
-      handlePaymentFail(); // Count as a failed attempt
+      handlePaymentFail();
     }
   });
 })();
-
-/****************************************************
- * COOKIE SCRIPT: ONLY CALLED ON PAYMENT SUCCESS
- ****************************************************/
-function setMyDonationCookie() {
-  // =================== START OF COOKIE SCRIPT ===================
-  var cookieName = "myDonationCookie";
-
-  // Helper to read a cookie by name (renamed to avoid conflict)
-  function getCookieForDonation(name) {
-    var value = "; " + document.cookie;
-    var parts = value.split("; " + name + "=");
-    if (parts.length === 2) {
-      return parts.pop().split(";").shift();
-    }
-  }
-
-  // Helper to set a cookie (default = 30 days expiry; renamed to avoid conflict)
-  function setCookieForDonation(name, value, days) {
-    var expires = "";
-    if (days) {
-      var date = new Date();
-      date.setTime(date.getTime() + (days * 24 * 60 * 60 * 1000));
-      expires = "; expires=" + date.toUTCString();
-    }
-    document.cookie = name + "=" + value + expires + "; path=/";
-  }
-
-  // Attempt to read existing cookie data
-  var dataStr = getCookieForDonation(cookieName);
-  var data;
-  try {
-    data = JSON.parse(dataStr);
-  } catch(e) {
-    data = null;
-  }
-
-  // Current time in ms
-  var now = Date.now();
-
-  // If no valid cookie found, create a new one
-  if (!data || !data.start) {
-    data = {
-      start: now,       // timestamp when we first created the cookie
-      incrementsUsed: 0 // how many +1% increments we have already applied
-    };
-    setCookieForDonation(cookieName, JSON.stringify(data), 30); // store for 30 days
-  }
-
-  // Calculate how many hours have passed since the "start"
-  var hoursPassed = (now - data.start) / (1000 * 60 * 60);
-
-  // For every 4 hours, we should add +1%
-  var totalIncrementsSoFar = Math.floor(hoursPassed / 4);
-
-  // Only add the difference between new increments and what we used before
-  var newIncrements = totalIncrementsSoFar - data.incrementsUsed;
-
-  // If we have a global donationPercentage, then apply the increments
-  if (typeof donationPercentage !== "undefined" && newIncrements > 0) {
-    donationPercentage += newIncrements;
-
-    // Clamp at 100% maximum
-    if (donationPercentage > 100) {
-      donationPercentage = 100;
-    }
-
-    // If it hits 100, set a global flag (in case you want to do something else)
-    if (donationPercentage >= 100) {
-      window.donationComplete = true;
-      // console.log("Donation is at 100% for this user (via cookie).");
-    }
-
-    // Update incrementsUsed and save cookie
-    data.incrementsUsed = totalIncrementsSoFar;
-    setCookieForDonation(cookieName, JSON.stringify(data), 30);
-  }
-  // ==================== END OF COOKIE SCRIPT ====================
-}
