@@ -103,7 +103,7 @@ db.serialize(() => {
       event_id TEXT,
       fbp TEXT,
       fbc TEXT,
-      landing_page_url TEXT,            -- <--- ADDED: store cleaned domain/URL
+      landing_page_url TEXT,
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP
     )
   `);
@@ -932,11 +932,16 @@ process.on('unhandledRejection', (reason, promise) => {
 
 process.on('uncaughtException', (err) => {
   console.error('Uncaught Exception:', err);
+  // Note: We do NOT call process.exit() here, so the app will not crash.
 });
 
 // ------------------------------------------------------
-// START THE SERVER
+// START THE SERVER (Wrapped in try-catch to avoid crash)
 // ------------------------------------------------------
-app.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
-});
+try {
+  app.listen(PORT, () => {
+    console.log(`Server running on port ${PORT}`);
+  });
+} catch (err) {
+  console.error('Error starting server:', err);
+}
