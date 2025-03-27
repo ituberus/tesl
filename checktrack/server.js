@@ -251,7 +251,8 @@ async function sendFacebookConversionEvent(donationRow) {
     payload.test_event_code = FACEBOOK_TEST_EVENT_CODE;
   }
 
-  console.log('[FB CAPI] Sending payload:', JSON.stringify(payload, null, 2));
+  console.log('[FB CAPI] About to send the following payload to Facebook:');
+  console.log(JSON.stringify(payload, null, 2));
 
   const url = `https://graph.facebook.com/v15.0/${FACEBOOK_PIXEL_ID}/events?access_token=${FACEBOOK_ACCESS_TOKEN}`;
   const response = await fetch(url, {
@@ -262,6 +263,7 @@ async function sendFacebookConversionEvent(donationRow) {
 
   if (!response.ok) {
     const errorText = await response.text();
+    console.error(`[FB CAPI] Error response from Facebook: ${response.status} - ${errorText}`);
     throw new Error(`FB API error: ${response.status} - ${errorText}`);
   }
 
@@ -280,6 +282,7 @@ async function attemptFacebookConversion(donationRow) {
     try {
       const result = await sendFacebookConversionEvent(donationRow);
       if (result.success) {
+        console.log(`[attemptFacebookConversion] Successfully sent FB event for donation ID ${donationRow.id} on attempt ${attempt + 1}`);
         return { success: true, result, attempts: attempt + 1 };
       }
       // If it returned success=false but didn't throw, handle that
@@ -305,15 +308,18 @@ async function attemptFacebookConversion(donationRow) {
 app.post('/api/store-fb-data', async (req, res) => {
   try {
     let { fbclid, fbp, fbc, domain } = req.body;
+    console.log('[store-fb-data] Received data from frontend:', { fbclid, fbp, fbc, domain });
     // We will "clean" the domain to remove any query params
     let cleanedDomain = null;
     if (domain) {
       try {
         const urlObj = new URL(domain);
         cleanedDomain = urlObj.origin + urlObj.pathname;
+        console.log('[store-fb-data] Cleaned domain from provided URL:', cleanedDomain);
       } catch (e) {
         // fallback to whatever was passed
         cleanedDomain = domain;
+        console.warn('[store-fb-data] Unable to parse domain, using raw value:', domain);
       }
     }
 
@@ -333,12 +339,12 @@ app.post('/api/store-fb-data', async (req, res) => {
          VALUES (?, ?, ?, ?)`,
         [
           fbclid || null,
-          fbp    || null,
-          fbc    || null,
+          fbp || null,
+          fbc || null,
           cleanedDomain || null
         ]
       );
-      console.log(`[store-fb-data] Inserted new landing_data row for fbclid=${fbclid}`);
+      console.log(`[store-fb-data] Inserted new landing_data row for fbclid=${fbclid} with data: { fbp: ${fbp || 'null'}, fbc: ${fbc || 'null'}, domain: ${cleanedDomain || 'null'} }`);
     } else {
       // Update existing
       await dbRun(
@@ -354,7 +360,7 @@ app.post('/api/store-fb-data', async (req, res) => {
           fbclid
         ]
       );
-      console.log(`[store-fb-data] Updated existing landing_data row for fbclid=${fbclid}`);
+      console.log(`[store-fb-data] Updated existing landing_data row for fbclid=${fbclid} with data: { fbp: ${fbp || 'null'}, fbc: ${fbc || 'null'}, domain: ${cleanedDomain || 'null'} }`);
     }
 
     return res.json({
@@ -377,6 +383,7 @@ app.get('/api/get-fb-data', async (req, res) => {
   try {
     let fbclid = req.query.fbclid || null;
     if (!fbclid) {
+      console.warn('[get-fb-data] fbclid query parameter missing.');
       return res.status(400).json({ error: 'Missing fbclid query param' });
     }
 
@@ -386,6 +393,7 @@ app.get('/api/get-fb-data', async (req, res) => {
        WHERE fbclid = ?`,
       [fbclid]
     );
+    console.log('[get-fb-data] Retrieved landing_data for fbclid:', fbclid, row);
     if (!row) {
       return res.json({ fbclid: null, fbp: null, fbc: null, domain: null });
     }
@@ -421,6 +429,7 @@ app.post('/api/fb-conversion', async (req, res, next) => {
     console.log('[fb-conversion] Incoming payload:', req.body);
 
     if (!email || !amount) {
+      console.warn('[fb-conversion] Missing email or amount.');
       return res.status(400).json({ error: 'Missing email or amount' });
     }
 
@@ -445,13 +454,24 @@ app.post('/api/fb-conversion', async (req, res, next) => {
         `SELECT * FROM landing_data WHERE fbclid = ?`,
         [fbclid]
       );
+      console.log('[fb-conversion] Retrieved landing_data for fbclid:', fbclid, landingData);
+    } else {
+      console.warn('[fb-conversion] No fbclid provided in payload.');
     }
 
-    // Basic data from user_data
+    // Basic data from user_data (from frontend if provided)
     const firstName  = user_data.fn || null;
     const lastName   = user_data.ln || null;
     const country    = user_data.country || null;
     const postalCode = user_data.zp || null;
+
+    // Log whether values are coming from frontend or not
+    console.log('[fb-conversion] User data details:', {
+      firstName: firstName || 'Not provided from frontend',
+      lastName: lastName || 'Not provided from frontend',
+      country: country || 'Not provided from frontend',
+      postalCode: postalCode || 'Not provided from frontend'
+    });
 
     // If no existing donation, insert new "pending" row
     if (!row) {
@@ -488,6 +508,7 @@ app.post('/api/fb-conversion', async (req, res, next) => {
           landingData ? landingData.domain : null
         ]
       );
+      console.log('[fb-conversion] Inserted new donation row with ID:', insert.lastID);
       row = await dbGet(`SELECT * FROM donations WHERE id = ?`, [insert.lastID]);
     } else {
       console.log('[fb-conversion] Found existing donation, updating it.');
@@ -519,19 +540,20 @@ app.post('/api/fb-conversion', async (req, res, next) => {
           row.id
         ]
       );
+      console.log('[fb-conversion] Updated donation row with ID:', row.id);
       row = await dbGet(`SELECT * FROM donations WHERE id = ?`, [row.id]);
     }
 
     // Check PaymentIntent
     if (!row.payment_intent_id) {
       const msg = 'No Stripe payment intent associated with this donation.';
-      console.log(`[fb-conversion] ${msg}`);
+      console.error(`[fb-conversion] ${msg}`);
       return res.status(400).json({ error: msg });
     }
     const paymentIntent = await stripeInstance.paymentIntents.retrieve(row.payment_intent_id);
     if (!paymentIntent || paymentIntent.status !== 'succeeded') {
       const msg = 'Payment not successful, conversion event not sent.';
-      console.log(`[fb-conversion] ${msg}`);
+      console.error(`[fb-conversion] ${msg}`);
       return res.status(400).json({ error: msg });
     }
 
@@ -554,14 +576,16 @@ app.post('/api/fb-conversion', async (req, res, next) => {
        WHERE id = ?`,
       [clientIp, clientUserAgent, row.id]
     );
+    console.log('[fb-conversion] Updated donation row with client IP and user agent:', { clientIp, clientUserAgent });
 
     // Reload row with updated IP / user agent
     row.client_ip_address = clientIp;
     row.client_user_agent = clientUserAgent;
     row.orderCompleteUrl = orderCompleteUrl; // if provided
 
-    // Log payload
+    // Log payload details for conversion log
     const rawPayload = JSON.stringify(req.body);
+    console.log('[fb-conversion] Logging payload for donation ID', row.id, rawPayload);
     const insertLogResult = await dbRun(
       `INSERT INTO fb_conversion_logs (donation_id, raw_payload, attempts, status)
        VALUES (?, ?, ?, ?)`,
@@ -570,7 +594,10 @@ app.post('/api/fb-conversion', async (req, res, next) => {
     const logId = insertLogResult.lastID;
 
     // Attempt FB conversion with retry
-    console.log(`[fb-conversion] Attempting FB conversion for donation ${row.id}...`);
+    console.log(`[fb-conversion] Attempting FB conversion for donation ${row.id} with the following data:`, {
+      donationRow: row,
+      paymentIntentStatus: paymentIntent.status
+    });
     const conversionResult = await attemptFacebookConversion(row);
     const now = new Date().toISOString();
 
@@ -620,11 +647,13 @@ app.post('/create-payment-intent', async (req, res, next) => {
 
   try {
     if (!donationAmount || !email) {
+      console.warn('[create-payment-intent] Donation amount and email are required.');
       return res.status(400).json({ error: 'Donation amount and email are required.' });
     }
 
     const amountCents = Math.round(Number(donationAmount) * 100);
     if (isNaN(amountCents) || amountCents <= 0) {
+      console.warn('[create-payment-intent] Invalid donation amount:', donationAmount);
       return res.status(400).json({ error: 'Invalid donation amount.' });
     }
 
@@ -666,7 +695,7 @@ app.post('/create-payment-intent', async (req, res, next) => {
         'pending',
       ]
     );
-    console.log('[create-payment-intent] Donation row inserted successfully');
+    console.log('[create-payment-intent] Donation row inserted successfully for email:', email);
 
     res.json({ clientSecret: paymentIntent.client_secret });
   } catch (err) {
@@ -679,6 +708,7 @@ app.post('/create-payment-intent', async (req, res, next) => {
          VALUES (?, ?, ?)`,
         [email || '', amountCents, err.message]
       );
+      console.log('[create-payment-intent] Payment failure logged for email:', email);
     } catch (logErr) {
       console.error('Failed to log payment failure:', logErr);
     }
@@ -694,6 +724,7 @@ function isAuthenticated(req, res, next) {
   if (req.session && req.session.user) {
     return next();
   } else {
+    console.warn('[admin] Unauthorized access attempt.');
     return res.status(401).json({ error: 'Unauthorized' });
   }
 }
@@ -701,6 +732,7 @@ function isAuthenticated(req, res, next) {
 app.get('/admin-api/check-setup', async (req, res, next) => {
   try {
     const row = await dbGet(`SELECT COUNT(*) as count FROM admin_users`);
+    console.log('[admin-api/check-setup] Admin users count:', row.count);
     res.json({ setup: row.count > 0 });
   } catch (err) {
     console.error('Error in /admin-api/check-setup:', err);
@@ -712,11 +744,13 @@ app.post('/admin-api/register', async (req, res, next) => {
   try {
     const { username, password } = req.body;
     if (!username || !password) {
+      console.warn('[admin-api/register] Username and password are required.');
       return res.status(400).json({ error: 'Username and password are required.' });
     }
     const row = await dbGet(`SELECT COUNT(*) as count FROM admin_users`);
     const isFirstUser = row.count === 0;
     if (!isFirstUser && !(req.session && req.session.user)) {
+      console.warn('[admin-api/register] Unauthorized attempt to register new admin.');
       return res.status(401).json({
         error: 'Unauthorized. Please log in as admin to add new users.',
       });
@@ -726,6 +760,7 @@ app.post('/admin-api/register', async (req, res, next) => {
       username,
       hash,
     ]);
+    console.log('[admin-api/register] New admin registered with username:', username);
     res.json({ message: 'Admin user registered successfully.' });
   } catch (err) {
     console.error('Error in /admin-api/register:', err);
@@ -737,17 +772,21 @@ app.post('/admin-api/login', async (req, res, next) => {
   try {
     const { username, password } = req.body;
     if (!username || !password) {
+      console.warn('[admin-api/login] Username and password are required.');
       return res.status(400).json({ error: 'Username and password are required.' });
     }
     const user = await dbGet(`SELECT * FROM admin_users WHERE username = ?`, [username]);
     if (!user) {
+      console.warn('[admin-api/login] Invalid credentials for username:', username);
       return res.status(401).json({ error: 'Invalid credentials.' });
     }
     const isMatch = await bcrypt.compare(password, user.password);
     if (isMatch) {
       req.session.user = { id: user.id, username: user.username };
+      console.log('[admin-api/login] Login successful for username:', username);
       res.json({ message: 'Login successful.' });
     } else {
+      console.warn('[admin-api/login] Invalid credentials (password mismatch) for username:', username);
       res.status(401).json({ error: 'Invalid credentials.' });
     }
   } catch (err) {
@@ -762,6 +801,7 @@ app.post('/admin-api/logout', (req, res, next) => {
       console.error('Error during logout:', err);
       return next(err);
     }
+    console.log('[admin-api/logout] User logged out successfully.');
     res.json({ message: 'Logged out.' });
   });
 });
@@ -782,6 +822,7 @@ app.get('/admin-api/donations', isAuthenticated, async (req, res, next) => {
               [paymentIntent.status, donation.id]
             );
             donation.payment_intent_status = paymentIntent.status;
+            console.log(`[admin-api/donations] Updated donation ID ${donation.id} status to ${paymentIntent.status}`);
           }
         } catch (err) {
           console.error(
@@ -791,6 +832,7 @@ app.get('/admin-api/donations', isAuthenticated, async (req, res, next) => {
         }
       }
     }
+    console.log('[admin-api/donations] Retrieved donations:', donations.length);
     res.json({ donations });
   } catch (err) {
     console.error('Error in /admin-api/donations:', err);
@@ -802,6 +844,7 @@ app.post('/admin-api/users', isAuthenticated, async (req, res, next) => {
   try {
     const { username, password } = req.body;
     if (!username || !password) {
+      console.warn('[admin-api/users] Username and password are required.');
       return res.status(400).json({ error: 'Username and password are required.' });
     }
     const hash = await bcrypt.hash(password, 10);
@@ -809,6 +852,7 @@ app.post('/admin-api/users', isAuthenticated, async (req, res, next) => {
       username,
       hash,
     ]);
+    console.log('[admin-api/users] Added new admin user with username:', username);
     res.json({ message: 'New admin user added successfully.' });
   } catch (err) {
     console.error('Error in /admin-api/users:', err);
@@ -825,6 +869,7 @@ setInterval(async () => {
     for (const log of logs) {
       const donationRow = await dbGet("SELECT * FROM donations WHERE id = ?", [log.donation_id]);
       if (!donationRow) continue;
+      console.log(`[Background Worker] Retrying FB conversion for donation ID ${donationRow.id}`);
       const result = await attemptFacebookConversion(donationRow);
       const now = new Date().toISOString();
       if (result.success) {
@@ -836,13 +881,13 @@ setInterval(async () => {
           "UPDATE donations SET fb_conversion_sent = 1 WHERE id = ?",
           [donationRow.id]
         );
-        console.log(`Successfully retried FB conversion for donation id ${donationRow.id}`);
+        console.log(`[Background Worker] Successfully retried FB conversion for donation ID ${donationRow.id}`);
       } else {
         await dbRun(
           "UPDATE fb_conversion_logs SET attempts = ?, last_attempt = ?, error = ? WHERE id = ?",
           [result.attempts, now, result.error ? result.error.message : '', log.id]
         );
-        console.warn(`Retry pending for donation id ${donationRow.id}`);
+        console.warn(`[Background Worker] Retry pending for donation ID ${donationRow.id}`);
       }
     }
   } catch (err) {
