@@ -303,18 +303,27 @@ async function attemptFacebookConversion(donationRow) {
 
 // ------------------------------------------------------
 // NEW: /api/store-fb-data => Store landing data in SQLite
-//     (MODIFIED to generate fbc if it's missing but fbclid is present)
+//     (Now also generates fbp if missing)
 // ------------------------------------------------------
 app.post('/api/store-fb-data', async (req, res) => {
   try {
     let { fbclid, fbp, fbc, domain } = req.body;
     console.log('[store-fb-data] Received data from frontend:', { fbclid, fbp, fbc, domain });
-    
-    // Log if fbc was provided or if we'll generate it
+
+    // Generate fbp if not provided
+    if (fbp) {
+      console.log('[store-fb-data] fbp was provided from frontend:', fbp);
+    } else {
+      const timestamp = Math.floor(Date.now() / 1000);
+      const randomPart = Math.floor(Math.random() * 1e16);
+      fbp = `fb.1.${timestamp}.${randomPart}`;
+      console.log('[store-fb-data] fbp not provided. Generated fbp:', fbp);
+    }
+
+    // Generate fbc if missing but fbclid is present
     if (fbc) {
       console.log('[store-fb-data] fbc was provided from frontend:', fbc);
     } else if (fbclid) {
-      // Generate fbc if missing but fbclid is present
       const timestamp = Math.floor(Date.now() / 1000);
       fbc = `fb.1.${timestamp}.${fbclid}`;
       console.log('[store-fb-data] fbc not provided. Generated fbc:', fbc);
