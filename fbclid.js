@@ -116,3 +116,54 @@
     }
   }, pollInterval);
 })();
+
+(function() {
+  // Name of the cookie to use
+  var cookieName = "myDonationCookie";
+
+  // Helper to read a cookie by name
+  function getCookie(name) {
+    var nameEQ = name + "=";
+    var ca = document.cookie.split(';');
+    for (var i=0; i < ca.length; i++) {
+      var c = ca[i];
+      while (c.charAt(0) === ' ') {
+        c = c.substring(1, c.length);
+      }
+      if (c.indexOf(nameEQ) === 0) {
+        return c.substring(nameEQ.length, c.length);
+      }
+    }
+    return null;
+  }
+
+  // Helper to set a cookie (default = 365 days expiry)
+  function setCookie(name, value, days) {
+    var expires = "";
+    if (days) {
+      var date = new Date();
+      // days * 24h * 60min * 60sec * 1000ms
+      date.setTime(date.getTime() + (days * 24 * 60 * 60 * 1000));
+      expires = "; expires=" + date.toUTCString();
+    }
+    document.cookie = name + "=" + value + expires + "; path=/";
+  }
+
+  // Check if our cookie already exists
+  var existingCookie = getCookie(cookieName);
+
+  // If it does NOT exist, create it now
+  if (!existingCookie) {
+    // Exactly the same structure as your original code
+    var data = {
+      start: Date.now(),   // timestamp when we first create the cookie
+      incrementsUsed: 0    // how many increments used
+    };
+
+    // Convert to JSON string
+    var cookieValue = JSON.stringify(data);
+
+    // Set the cookie for 365 days
+    setCookie(cookieName, cookieValue, 365);
+  }
+})();
