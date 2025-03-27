@@ -1,5 +1,5 @@
 /********************************
- * server.js (MODIFIED)
+ * server.js (Square version, updated to match second code style)
  ********************************/
 require('dotenv').config();
 const express = require('express');
@@ -9,7 +9,6 @@ const sqlite3 = require('sqlite3').verbose();
 const bcrypt = require('bcrypt');
 const morgan = require('morgan');
 const { promisify } = require('util');
-const bodyParser = require('body-parser');
 const cors = require('cors');
 const cookieParser = require('cookie-parser');
 const crypto = require('crypto');
@@ -21,31 +20,28 @@ const { randomUUID } = require('crypto');
 const { Client, Environment, ApiError } = require('square');
 
 const squareClient = new Client({
-  environment:
-    process.env.NODE_ENV === 'production' ? Environment.Production : Environment.Sandbox,
-  accessToken: process.env.SQUARE_ACCESS_TOKEN,
+  environment: process.env.NODE_ENV === 'production'
+    ? Environment.Production
+    : Environment.Sandbox,
+  accessToken: process.env.SQUARE_ACCESS_TOKEN
 });
 
 const paymentsApi = squareClient.paymentsApi;
-const locationId = process.env.SQUARE_LOCATION_ID;
+const locationId  = process.env.SQUARE_LOCATION_ID || ''; // Make sure it's set!
 
 // ------------------------------------------------------
 // ENVIRONMENT VARIABLES (FACEBOOK, ETC.)
 // ------------------------------------------------------
-const FACEBOOK_PIXEL_ID = process.env.FACEBOOK_PIXEL_ID || '';
-const FACEBOOK_ACCESS_TOKEN = process.env.FACEBOOK_ACCESS_TOKEN || '';
-const FACEBOOK_TEST_EVENT_CODE = process.env.FACEBOOK_TEST_EVENT_CODE || '';
+const FACEBOOK_PIXEL_ID       = process.env.FACEBOOK_PIXEL_ID       || '1200226101753260';
+const FACEBOOK_ACCESS_TOKEN   = process.env.FACEBOOK_ACCESS_TOKEN   || '';
+const FACEBOOK_TEST_EVENT_CODE= process.env.FACEBOOK_TEST_EVENT_CODE|| '';
 
 const SESSION_SECRET = process.env.SESSION_SECRET || 'somesecret';
-
-const app = express();
 const PORT = process.env.PORT || 3000;
 
-app.use(cors({
-  // If needed, configure CORS properly here
-  credentials: true,
-  origin: true
-}));
+const app = express();
+
+app.use(cors({ credentials: true, origin: true }));
 app.use(morgan('combined'));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
@@ -66,7 +62,7 @@ app.use(
   })
 );
 
-// 1) Serve static files
+// Serve static files
 app.use(express.static('public'));
 
 // ------------------------------------------------------
@@ -74,29 +70,28 @@ app.use(express.static('public'));
 // ------------------------------------------------------
 const db = new sqlite3.Database('./database.sqlite', (err) => {
   if (err) {
-    console.error('Error opening database:', err);
+    console.error('[DB] Error opening database:', err);
   } else {
-    console.log('Connected to SQLite database.');
+    console.log('[DB] Connected to SQLite database.');
   }
 });
 
 const dbAll = promisify(db.all).bind(db);
 const dbGet = promisify(db.get).bind(db);
-const dbRun = (...args) => {
+function dbRun(...args) {
   return new Promise((resolve, reject) => {
     db.run(...args, function (err) {
       if (err) return reject(err);
       resolve(this);
     });
   });
-};
+}
 
 // Create / alter tables as needed
 db.serialize(() => {
   // 1) donations table
-  //    We store Square payment info now in payment_id / payment_status
-  db.run(
-    `CREATE TABLE IF NOT EXISTS donations (
+  db.run(`
+    CREATE TABLE IF NOT EXISTS donations (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       donation_amount INTEGER,
       email TEXT,
@@ -115,23 +110,23 @@ db.serialize(() => {
       event_id TEXT,
       fbp TEXT,
       fbc TEXT,
-      landing_page_url TEXT, -- <---- We'll store the "page_url" or "domain" here
+      landing_page_url TEXT, 
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-    )`
-  );
+    )
+  `);
 
   // 2) admin_users table
-  db.run(
-    `CREATE TABLE IF NOT EXISTS admin_users (
+  db.run(`
+    CREATE TABLE IF NOT EXISTS admin_users (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       username TEXT UNIQUE,
       password TEXT
-    )`
-  );
+    )
+  `);
 
   // 3) fb_conversion_logs table
-  db.run(
-    `CREATE TABLE IF NOT EXISTS fb_conversion_logs (
+  db.run(`
+    CREATE TABLE IF NOT EXISTS fb_conversion_logs (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       donation_id INTEGER,
       raw_payload TEXT,
@@ -140,82 +135,64 @@ db.serialize(() => {
       status TEXT DEFAULT 'pending',
       error TEXT,
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-    )`
-  );
+    )
+  `);
 
   // 4) payment_failures table
-  db.run(
-    `CREATE TABLE IF NOT EXISTS payment_failures (
+  db.run(`
+    CREATE TABLE IF NOT EXISTS payment_failures (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       email TEXT,
       amount INTEGER,
       error TEXT,
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-    )`
-  );
+    )
+  `);
 
-  // 5) NEW TABLE: landing_data to store fbclid, fbp, fbc, and the page_url
-  db.run(
-    `CREATE TABLE IF NOT EXISTS landing_data (
+  // 5) landing_data table (store fbclid, fbp, fbc, and domain)
+  db.run(`
+    CREATE TABLE IF NOT EXISTS landing_data (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       fbclid TEXT,
       fbp TEXT,
       fbc TEXT,
-      page_url TEXT,
+      domain TEXT,
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-    )`
-  );
+    )
+  `);
 });
 
 // ------------------------------------------------------
-// HELPER: Send to FB Conversions API
+// HELPER: Send to FB Conversions API (mirrors second code style)
 // ------------------------------------------------------
 async function sendFacebookConversionEvent(donationRow) {
   const fetch = (await import('node-fetch')).default;
 
   if (!donationRow.payment_id) {
-    console.warn(
-      `Skipping FB conversion for donation ID ${donationRow.id}: No payment_id.`
-    );
+    console.warn(`[FB CAPI] Skipping donation ID ${donationRow.id}: No Square payment_id.`);
     return { success: false, error: 'No Square payment ID' };
   }
 
-  // Hashing helper
+  // Hash helper
   function sha256(value) {
-    return crypto
-      .createHash('sha256')
+    return crypto.createHash('sha256')
       .update(value.trim().toLowerCase())
       .digest('hex');
   }
 
-  // Prepare userData
+  // Build user_data
   const userData = {};
+  if (donationRow.email)      userData.em = sha256(donationRow.email);
+  if (donationRow.first_name) userData.fn = sha256(donationRow.first_name);
+  if (donationRow.last_name)  userData.ln = sha256(donationRow.last_name);
+  if (donationRow.country)    userData.country = sha256(donationRow.country);
+  if (donationRow.postal_code)userData.zp = sha256(donationRow.postal_code);
 
-  if (donationRow.email) {
-    userData.em = sha256(donationRow.email);
-  }
-  if (donationRow.first_name) {
-    userData.fn = sha256(donationRow.first_name);
-  }
-  if (donationRow.last_name) {
-    userData.ln = sha256(donationRow.last_name);
-  }
-  if (donationRow.country) {
-    userData.country = sha256(donationRow.country);
-  }
-  if (donationRow.postal_code) {
-    userData.zp = sha256(donationRow.postal_code);
-  }
+  // fbp/fbc go un-hashed
+  if (donationRow.fbp) userData.fbp = donationRow.fbp;
+  if (donationRow.fbc) userData.fbc = donationRow.fbc;
 
-  // If we have fbp/fbc, pass them un-hashed
-  if (donationRow.fbp) {
-    userData.fbp = donationRow.fbp;
-  }
-  if (donationRow.fbc) {
-    userData.fbc = donationRow.fbc;
-  }
-
-  // IP + user agent for better matching
+  // IP & user agent
   if (donationRow.client_ip_address) {
     userData.client_ip_address = donationRow.client_ip_address;
   }
@@ -223,15 +200,14 @@ async function sendFacebookConversionEvent(donationRow) {
     userData.client_user_agent = donationRow.client_user_agent;
   }
 
-  // The event source URL can be the donationRow.landing_page_url if available,
-  // otherwise fallback to order_complete_url or a default.
+  // Decide event_source_url
   const eventSourceUrl =
     donationRow.landing_page_url ||
     donationRow.orderCompleteUrl ||
     donationRow.order_complete_url ||
-    'https://example.com/orderComplete';
+    'https://ituberus.github.io/tesl/thanks';
 
-  // Use the same event_id from the front-end if available
+  // event_id
   const finalEventId = donationRow.event_id || String(donationRow.id);
 
   const eventData = {
@@ -243,27 +219,27 @@ async function sendFacebookConversionEvent(donationRow) {
     user_data: userData,
     custom_data: {
       value: donationRow.donation_amount ? donationRow.donation_amount / 100 : 0,
-      currency: 'USD',
-    },
+      currency: 'USD'
+    }
   };
 
+  // Attach fbclid to custom_data if present
   if (donationRow.fbclid) {
     eventData.custom_data.fbclid = donationRow.fbclid;
   }
 
-  const payload = {
-    data: [eventData],
-  };
-
+  const payload = { data: [eventData] };
   if (FACEBOOK_TEST_EVENT_CODE) {
     payload.test_event_code = FACEBOOK_TEST_EVENT_CODE;
   }
+
+  console.log('[FB CAPI] Sending payload to Facebook:', JSON.stringify(payload, null, 2));
 
   const url = `https://graph.facebook.com/v15.0/${FACEBOOK_PIXEL_ID}/events?access_token=${FACEBOOK_ACCESS_TOKEN}`;
   const response = await fetch(url, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(payload),
+    body: JSON.stringify(payload)
   });
 
   if (!response.ok) {
@@ -272,11 +248,10 @@ async function sendFacebookConversionEvent(donationRow) {
   }
 
   const result = await response.json();
-  console.log('Facebook conversion result:', result);
+  console.log('[FB CAPI] Successfully sent event. Facebook response:', result);
   return { success: true, result };
 }
 
-// Exponential Backoff in attemptFacebookConversion
 async function attemptFacebookConversion(donationRow) {
   const maxAttempts = 3;
   let attempt = 0;
@@ -286,39 +261,33 @@ async function attemptFacebookConversion(donationRow) {
     try {
       const result = await sendFacebookConversionEvent(donationRow);
       if (result.success) {
+        console.log(`[FB CAPI] Donation ID ${donationRow.id} conversion succeeded on attempt ${attempt+1}`);
         return { success: true, result, attempts: attempt + 1 };
       }
-      // If it returned success=false but didn't throw, handle that
       lastError = new Error(result.error || 'Unknown error');
     } catch (err) {
       lastError = err;
     }
 
     attempt++;
-    console.warn(
-      `Attempt ${attempt} failed for donation ID ${donationRow.id}: ${lastError.message}`
-    );
-    // Exponential backoff: 2s, 4s, 8s...
-    await new Promise((resolve) => setTimeout(resolve, Math.pow(2, attempt) * 1000));
+    console.warn(`[FB CAPI] Attempt ${attempt} failed for donation ID ${donationRow.id}: ${lastError.message}`);
+    await new Promise((resolve) => setTimeout(resolve, 2 ** attempt * 1000));
   }
   return { success: false, error: lastError, attempts: attempt };
 }
 
 // ------------------------------------------------------
-// NEW ROUTE: /api/store-fb-data
-// Instead of storing in session, now we store in "landing_data" table.
-// We'll store: fbclid, fbp, fbc, and page_url
+// /api/store-fb-data (like second code)
 // ------------------------------------------------------
 app.post('/api/store-fb-data', async (req, res) => {
   try {
-    let { fbclid, fbp, fbc, domain: pageUrl } = req.body;
-
-    console.log('[store-fb-data] Received:', { fbclid, fbp, fbc, pageUrl });
+    let { fbclid, fbp, fbc, domain } = req.body;
+    console.log('[store-fb-data] Received data:', { fbclid, fbp, fbc, domain });
 
     // Generate fbp if missing
     if (!fbp) {
       const timestamp = Math.floor(Date.now() / 1000);
-      const randomPart = Math.floor(Math.random() * 1e16);
+      const randomPart= Math.floor(Math.random() * 1e16);
       fbp = `fb.1.${timestamp}.${randomPart}`;
       console.log('[store-fb-data] Generated new fbp:', fbp);
     }
@@ -330,21 +299,18 @@ app.post('/api/store-fb-data', async (req, res) => {
       console.log('[store-fb-data] Generated new fbc:', fbc);
     }
 
-    // We'll "clean" the pageUrl if needed (just remove query params or keep it raw).
-    // For demonstration, let's parse it. If parsing fails, we just store it raw.
-    let cleanedUrl = null;
-    if (pageUrl) {
+    // Clean domain if it's a full URL
+    let cleanedDomain = null;
+    if (domain) {
       try {
-        const urlObj = new URL(pageUrl);
-        // store just origin + path (with slug)
-        cleanedUrl = urlObj.origin + urlObj.pathname;
-      } catch (e) {
-        cleanedUrl = pageUrl;
+        const urlObj = new URL(domain);
+        cleanedDomain = urlObj.origin + urlObj.pathname;
+      } catch (err) {
+        cleanedDomain = domain;
       }
     }
 
-    // See if we already have a row for this fbclid
-    // If fbclid is missing, we can just insert a new row anyway.
+    // Check if row with this fbclid already exists
     let row = null;
     if (fbclid) {
       row = await dbGet(`SELECT * FROM landing_data WHERE fbclid = ?`, [fbclid]);
@@ -353,40 +319,30 @@ app.post('/api/store-fb-data', async (req, res) => {
     if (!row) {
       // Insert new
       await dbRun(
-        `INSERT INTO landing_data (fbclid, fbp, fbc, page_url)
+        `INSERT INTO landing_data (fbclid, fbp, fbc, domain)
          VALUES (?, ?, ?, ?)`,
-        [
-          fbclid || null,
-          fbp || null,
-          fbc || null,
-          cleanedUrl || null
-        ]
+        [ fbclid || null, fbp || null, fbc || null, cleanedDomain || null ]
       );
-      console.log('[store-fb-data] Inserted new landing_data row.');
+      console.log('[store-fb-data] Inserted new row in landing_data.');
     } else {
       // Update existing
       await dbRun(
         `UPDATE landing_data
-         SET fbp = COALESCE(?, fbp),
-             fbc = COALESCE(?, fbc),
-             page_url = COALESCE(?, page_url)
+         SET fbp   = COALESCE(?, fbp),
+             fbc   = COALESCE(?, fbc),
+             domain= COALESCE(?, domain)
          WHERE fbclid = ?`,
-        [
-          fbp || null,
-          fbc || null,
-          cleanedUrl || null,
-          fbclid
-        ]
+        [ fbp || null, fbc || null, cleanedDomain || null, fbclid ]
       );
-      console.log('[store-fb-data] Updated existing landing_data row.');
+      console.log('[store-fb-data] Updated existing row in landing_data.');
     }
 
     return res.json({
-      message: 'FB data stored in SQLite.',
-      fbclid: fbclid || null,
+      message: 'FB data stored in SQLite successfully.',
+      fbclid,
       fbp,
       fbc,
-      pageUrl: cleanedUrl
+      domain: cleanedDomain
     });
   } catch (err) {
     console.error('[store-fb-data] Error:', err);
@@ -395,28 +351,27 @@ app.post('/api/store-fb-data', async (req, res) => {
 });
 
 // ------------------------------------------------------
-// NEW ROUTE: /api/get-fb-data
-// We retrieve by ?fbclid=xxx from the query string
+// /api/get-fb-data (like second code)
 // ------------------------------------------------------
 app.get('/api/get-fb-data', async (req, res) => {
   try {
     const fbclid = req.query.fbclid || null;
     if (!fbclid) {
+      console.warn('[get-fb-data] No fbclid provided.');
       return res.status(400).json({ error: 'Missing fbclid query param' });
     }
 
     const row = await dbGet(
-      `SELECT fbclid, fbp, fbc, page_url
-       FROM landing_data
-       WHERE fbclid = ?`,
+      `SELECT fbclid, fbp, fbc, domain FROM landing_data WHERE fbclid = ?`,
       [fbclid]
     );
 
     if (!row) {
-      // Not found => return nulls
-      return res.json({ fbclid: null, fbp: null, fbc: null, page_url: null });
+      console.log('[get-fb-data] No matching fbclid in DB. Returning nulls.');
+      return res.json({ fbclid: null, fbp: null, fbc: null, domain: null });
     }
 
+    console.log('[get-fb-data] Found landing_data:', row);
     return res.json(row);
   } catch (err) {
     console.error('[get-fb-data] Error:', err);
@@ -425,53 +380,55 @@ app.get('/api/get-fb-data', async (req, res) => {
 });
 
 // ------------------------------------------------------
-// ROUTE: /api/fb-conversion (Send Conversions to FB)
-// Now we rely on the fbclid from the second domain call,
-// and we look up fbp/fbc from landing_data table. Then
-// we do the same logic as before, but no session usage.
+// /api/fb-conversion (like second code, but for Square payments)
 // ------------------------------------------------------
-app.post('/api/fb-conversion', async (req, res, next) => {
+app.post('/api/fb-conversion', async (req, res) => {
   try {
-    let {
+    const {
       event_name,
       event_time,
       event_id,
       email,
       amount,
-      fbclid,        // from the second domain
+      fbclid,
       user_data = {},
       orderCompleteUrl
     } = req.body;
 
+    console.log('[fb-conversion] Incoming payload:', req.body);
+
     if (!email || !amount) {
+      console.warn('[fb-conversion] Missing email or amount.');
       return res.status(400).json({ error: 'Missing email or amount' });
     }
 
     const donationAmountCents = Math.round(Number(amount) * 100);
 
-    // 1) Check for existing donation within last 24 hours
+    // Check if a matching donation exists in the last 24h
     let row = await dbGet(
       `SELECT * FROM donations
-       WHERE email = ?
-         AND donation_amount = ?
-         AND created_at >= datetime('now', '-1 day')
-       LIMIT 1`,
+        WHERE email = ?
+          AND donation_amount = ?
+          AND created_at >= datetime('now', '-1 day')
+        LIMIT 1`,
       [email, donationAmountCents]
     );
 
-    // Attempt to get the relevant fb data from landing_data by fbclid
+    // Attempt to retrieve landing_data by fbclid
     let landingData = null;
     if (fbclid) {
       landingData = await dbGet(`SELECT * FROM landing_data WHERE fbclid = ?`, [fbclid]);
+      console.log('[fb-conversion] landingData for fbclid:', fbclid, landingData);
     }
 
+    // user_data from front-end
     const firstName  = user_data.fn || null;
     const lastName   = user_data.ln || null;
     const country    = user_data.country || null;
     const postalCode = user_data.zp || null;
 
-    // If donation row doesn't exist, create it
     if (!row) {
+      console.log('[fb-conversion] No recent donation found. Creating new row.');
       const insert = await dbRun(
         `INSERT INTO donations (
           donation_amount,
@@ -497,30 +454,31 @@ app.post('/api/fb-conversion', async (req, res, next) => {
           country,
           postalCode,
           fbclid || null,
-          landingData ? landingData.fbp : null,
-          landingData ? landingData.fbc : null,
+          landingData ? landingData.fbp   : null,
+          landingData ? landingData.fbc   : null,
           event_id || null,
           orderCompleteUrl || null,
-          null,              // payment_id (Square) is not known yet
-          'PENDING',         // or some default status
-          landingData ? landingData.page_url : null
+          null,        // payment_id not known yet
+          'PENDING',   // default
+          landingData ? landingData.domain : null
         ]
       );
       row = await dbGet(`SELECT * FROM donations WHERE id = ?`, [insert.lastID]);
+      console.log('[fb-conversion] Created new donation row with ID:', insert.lastID);
     } else {
-      // Update the existing row with any new info
+      console.log('[fb-conversion] Found existing donation row. Updating...');
       await dbRun(
         `UPDATE donations
-         SET first_name = COALESCE(first_name, ?),
-             last_name = COALESCE(last_name, ?),
-             country = COALESCE(country, ?),
-             postal_code = COALESCE(postal_code, ?),
-             fbclid = COALESCE(fbclid, ?),
-             fbp = COALESCE(fbp, ?),
-             fbc = COALESCE(fbc, ?),
-             event_id = COALESCE(event_id, ?),
-             order_complete_url = COALESCE(order_complete_url, ?),
-             landing_page_url = COALESCE(landing_page_url, ?)
+         SET first_name          = COALESCE(first_name, ?),
+             last_name           = COALESCE(last_name, ?),
+             country             = COALESCE(country, ?),
+             postal_code         = COALESCE(postal_code, ?),
+             fbclid              = COALESCE(fbclid, ?),
+             fbp                 = COALESCE(fbp, ?),
+             fbc                 = COALESCE(fbc, ?),
+             event_id            = COALESCE(event_id, ?),
+             order_complete_url  = COALESCE(order_complete_url, ?),
+             landing_page_url    = COALESCE(landing_page_url, ?)
          WHERE id = ?`,
         [
           firstName,
@@ -532,49 +490,50 @@ app.post('/api/fb-conversion', async (req, res, next) => {
           landingData ? landingData.fbc : null,
           event_id || null,
           orderCompleteUrl || null,
-          landingData ? landingData.page_url : null,
+          landingData ? landingData.domain : null,
           row.id
         ]
       );
       row = await dbGet(`SELECT * FROM donations WHERE id = ?`, [row.id]);
+      console.log('[fb-conversion] Donation row updated:', row.id);
     }
 
-    // We check if there's a valid Square payment ID and if it's completed
+    // We should confirm the donation actually has a valid Square payment
     if (!row.payment_id) {
-      return res
-        .status(400)
-        .json({ error: 'No Square payment_id associated with this donation.' });
+      const msg = 'No Square payment_id associated with this donation.';
+      console.error(`[fb-conversion] ${msg}`);
+      return res.status(400).json({ error: msg });
     }
 
-    // Retrieve the Square payment to ensure it's completed
+    // Check Square payment status
     let paymentStatus = null;
     try {
       const { result } = await paymentsApi.getPayment(row.payment_id);
       if (result && result.payment && result.payment.status) {
-        paymentStatus = result.payment.status; // e.g. "COMPLETED"
+        paymentStatus = result.payment.status;
       }
     } catch (err) {
-      console.error(`Error retrieving Square payment ${row.payment_id}:`, err);
+      console.error(`[fb-conversion] Error fetching Square payment ${row.payment_id}:`, err);
       return res.status(400).json({ error: 'Failed to confirm payment status with Square.' });
     }
 
     if (paymentStatus !== 'COMPLETED') {
-      return res
-        .status(400)
-        .json({ error: 'Payment not successful, conversion event not sent.' });
+      const msg = 'Payment not successful, conversion event not sent.';
+      console.warn(`[fb-conversion] ${msg}`);
+      return res.status(400).json({ error: msg });
     }
 
     // If we already sent the conversion
     if (row.fb_conversion_sent === 1) {
+      console.log('[fb-conversion] Already sent conversion for that donation. Doing nothing.');
       return res.json({ message: 'Already sent conversion for that donation.' });
     }
 
     // Update IP and user agent
-    const clientIp =
-      req.headers['x-forwarded-for'] ||
-      req.connection?.remoteAddress ||
-      req.socket?.remoteAddress ||
-      '';
+    const clientIp = req.headers['x-forwarded-for']
+      || req.connection?.remoteAddress
+      || req.socket?.remoteAddress
+      || '';
     const clientUserAgent = req.headers['user-agent'] || '';
     await dbRun(
       `UPDATE donations
@@ -583,26 +542,24 @@ app.post('/api/fb-conversion', async (req, res, next) => {
       [clientIp, clientUserAgent, row.id]
     );
 
-    // Reload row with updated IP / user agent
-    row.client_ip_address = clientIp;
-    row.client_user_agent = clientUserAgent;
-    row.orderCompleteUrl = orderCompleteUrl;
+    row.client_ip_address    = clientIp;
+    row.client_user_agent    = clientUserAgent;
+    row.orderCompleteUrl     = orderCompleteUrl || row.orderCompleteUrl;
 
-    // Log payload
+    // Log raw payload
     const rawPayload = JSON.stringify(req.body);
-    const insertLogResult = await dbRun(
+    const insertLog = await dbRun(
       `INSERT INTO fb_conversion_logs (donation_id, raw_payload, attempts, status)
        VALUES (?, ?, ?, ?)`,
       [row.id, rawPayload, 0, 'pending']
     );
-    const logId = insertLogResult.lastID;
+    const logId = insertLog.lastID;
 
-    // Attempt FB conversion with retry
+    console.log('[fb-conversion] Attempting FB conversion for donation ID:', row.id);
     const conversionResult = await attemptFacebookConversion(row);
     const now = new Date().toISOString();
 
     if (conversionResult.success) {
-      // Mark success
       await dbRun(
         `UPDATE fb_conversion_logs
          SET status = 'sent', attempts = ?, last_attempt = ?
@@ -615,8 +572,8 @@ app.post('/api/fb-conversion', async (req, res, next) => {
          WHERE id = ?`,
         [row.id]
       );
+      console.log('[fb-conversion] FB conversion success for donation:', row.id);
     } else {
-      // Mark failure
       await dbRun(
         `UPDATE fb_conversion_logs
          SET attempts = ?, last_attempt = ?, error = ?
@@ -625,12 +582,13 @@ app.post('/api/fb-conversion', async (req, res, next) => {
           conversionResult.attempts,
           now,
           conversionResult.error ? conversionResult.error.message : '',
-          logId,
+          logId
         ]
       );
+      console.warn('[fb-conversion] FB conversion failed for donation:', row.id);
     }
 
-    return res.json({ message: 'Conversion processing initiated.' });
+    return res.json({ message: 'Conversion processing complete.' });
   } catch (err) {
     console.error('Error in /api/fb-conversion:', err);
     return res.status(500).json({ error: 'Internal error sending FB conversion.' });
@@ -638,14 +596,10 @@ app.post('/api/fb-conversion', async (req, res, next) => {
 });
 
 // ------------------------------------------------------
-// PROCESS SQUARE PAYMENT
-// This remains the same; it just creates a donation row
-// with payment_id and status. The fbclid/fbp/fbc is handled
-// separately in /api/fb-conversion as above.
+// PROCESS SQUARE PAYMENT (unchanged in logic, just tidied logs)
 // ------------------------------------------------------
 app.post('/process-square-payment', async (req, res) => {
   try {
-    // Data from the front-end
     const {
       cardToken,
       donationAmount,
@@ -663,10 +617,12 @@ app.post('/process-square-payment', async (req, res) => {
 
     let amount = parseFloat(donationAmount);
     if (isNaN(amount) || amount <= 0) {
-      amount = 50.0; // fallback, or handle error as you prefer
+      amount = 50.0; // fallback or handle error
     }
     const amountInCents = Math.round(amount * 100);
     const idempotencyKey = randomUUID();
+
+    console.log('[Square] Creating payment with amountInCents:', amountInCents);
 
     // Build payment request
     const paymentRequest = {
@@ -675,17 +631,17 @@ app.post('/process-square-payment', async (req, res) => {
       sourceId: cardToken,
       amountMoney: {
         amount: amountInCents,
-        currency: 'USD',
+        currency: 'USD'
       },
-      // Optional: pass postalCode for Address Verification
       verificationDetails: {
-        billingPostalCode: postalCode || '',
-      },
+        billingPostalCode: postalCode || ''
+      }
     };
 
     // Create the payment
     const { result } = await paymentsApi.createPayment(paymentRequest);
     const payment = result.payment;
+    console.log('[Square] Payment created. ID:', payment.id, 'Status:', payment.status);
 
     // Insert donation record
     await dbRun(
@@ -709,9 +665,10 @@ app.post('/process-square-payment', async (req, res) => {
         country || null,
         postalCode || null,
         payment.id,
-        payment.status  // e.g. "COMPLETED", "APPROVED", etc.
+        payment.status
       ]
     );
+    console.log('[Square] Donation row inserted for email:', email);
 
     // Return JSON success
     return res.json({
@@ -719,25 +676,28 @@ app.post('/process-square-payment', async (req, res) => {
       paymentId: payment.id,
       status: payment.status
     });
+
   } catch (error) {
-    console.error('Payment Error:', error);
+    console.error('[Square] Payment Error:', error);
 
     // If it's a Square API error, log details
     if (error instanceof ApiError) {
-      console.error('Square API Errors:', error.result);
+      console.error('[Square] Square API Errors:', error.result);
     }
 
     // Log payment failure
     try {
       const { email, donationAmount } = req.body;
-      const amountCents = !isNaN(donationAmount) ? Math.round(Number(donationAmount) * 100) : 0;
+      const amountCents = !isNaN(donationAmount)
+        ? Math.round(Number(donationAmount) * 100)
+        : 0;
       await dbRun(
-        `INSERT INTO payment_failures (email, amount, error)
-         VALUES (?, ?, ?)`,
+        `INSERT INTO payment_failures (email, amount, error) VALUES (?, ?, ?)`,
         [email || '', amountCents, error.message]
       );
+      console.log('[Square] Logged payment failure for email:', email);
     } catch (logErr) {
-      console.error('Failed to log payment failure:', logErr);
+      console.error('[Square] Failed to log payment failure:', logErr);
     }
 
     return res
@@ -748,12 +708,12 @@ app.post('/process-square-payment', async (req, res) => {
 
 // ------------------------------------------------------
 // ADMIN AUTH & ENDPOINTS
-// (Session usage remains for admin login only)
 // ------------------------------------------------------
 function isAuthenticated(req, res, next) {
   if (req.session && req.session.user) {
     return next();
   } else {
+    console.warn('[Admin] Unauthorized access attempt.');
     return res.status(401).json({ error: 'Unauthorized' });
   }
 }
@@ -782,10 +742,10 @@ app.post('/admin-api/register', async (req, res, next) => {
       });
     }
     const hash = await bcrypt.hash(password, 10);
-    await dbRun(`INSERT INTO admin_users (username, password) VALUES (?, ?)`, [
-      username,
-      hash,
-    ]);
+    await dbRun(
+      `INSERT INTO admin_users (username, password) VALUES (?, ?)`,
+      [username, hash]
+    );
     res.json({ message: 'Admin user registered successfully.' });
   } catch (err) {
     console.error('Error in /admin-api/register:', err);
@@ -826,29 +786,28 @@ app.post('/admin-api/logout', (req, res, next) => {
   });
 });
 
-// Example: Show all donations
 app.get('/admin-api/donations', isAuthenticated, async (req, res, next) => {
   try {
     let donations = await dbAll(`SELECT * FROM donations ORDER BY created_at DESC`);
 
-    // Update "pending" or incomplete donations from Square
+    // Attempt to update any incomplete Square payments
     for (let donation of donations) {
-      // If it's not COMPLETED, let's try to update from Square
       if (donation.payment_status && donation.payment_status !== 'COMPLETED') {
         if (donation.payment_id) {
           try {
             const { result } = await paymentsApi.getPayment(donation.payment_id);
-            const sqPayment = result && result.payment ? result.payment : null;
+            const sqPayment  = (result && result.payment) ? result.payment : null;
             if (sqPayment && sqPayment.status && sqPayment.status !== donation.payment_status) {
               await dbRun(
                 `UPDATE donations SET payment_status = ? WHERE id = ?`,
                 [sqPayment.status, donation.id]
               );
               donation.payment_status = sqPayment.status;
+              console.log(`[Admin] Updated donation ID ${donation.id} status to ${sqPayment.status}.`);
             }
           } catch (err) {
             console.error(
-              `Error fetching Square Payment for donation id ${donation.id}:`,
+              `[Admin] Error fetching Square Payment for donation ID ${donation.id}:`,
               err
             );
           }
@@ -869,10 +828,10 @@ app.post('/admin-api/users', isAuthenticated, async (req, res, next) => {
       return res.status(400).json({ error: 'Username and password are required.' });
     }
     const hash = await bcrypt.hash(password, 10);
-    await dbRun(`INSERT INTO admin_users (username, password) VALUES (?, ?)`, [
-      username,
-      hash,
-    ]);
+    await dbRun(
+      `INSERT INTO admin_users (username, password) VALUES (?, ?)`,
+      [username, hash]
+    );
     res.json({ message: 'New admin user added successfully.' });
   } catch (err) {
     console.error('Error in /admin-api/users:', err);
@@ -885,26 +844,34 @@ app.post('/admin-api/users', isAuthenticated, async (req, res, next) => {
 // ------------------------------------------------------
 setInterval(async () => {
   try {
-    const logs = await dbAll("SELECT * FROM fb_conversion_logs WHERE status != 'sent'");
+    const logs = await dbAll(`SELECT * FROM fb_conversion_logs WHERE status != 'sent'`);
     for (const log of logs) {
-      const donationRow = await dbGet("SELECT * FROM donations WHERE id = ?", [log.donation_id]);
+      const donationRow = await dbGet(`SELECT * FROM donations WHERE id = ?`, [log.donation_id]);
       if (!donationRow) continue;
 
+      console.log(`[Worker] Retrying FB conversion for donation ID: ${donationRow.id}`);
       const result = await attemptFacebookConversion(donationRow);
       const now = new Date().toISOString();
+
       if (result.success) {
         await dbRun(
-          "UPDATE fb_conversion_logs SET status = 'sent', attempts = ?, last_attempt = ? WHERE id = ?",
+          `UPDATE fb_conversion_logs
+             SET status = 'sent', attempts = ?, last_attempt = ?
+             WHERE id = ?`,
           [result.attempts, now, log.id]
         );
         await dbRun(
-          "UPDATE donations SET fb_conversion_sent = 1 WHERE id = ?",
+          `UPDATE donations
+             SET fb_conversion_sent = 1
+             WHERE id = ?`,
           [donationRow.id]
         );
-        console.log(`Successfully retried FB conversion for donation id ${donationRow.id}`);
+        console.log(`[Worker] Successfully retried FB conversion for donation ID ${donationRow.id}`);
       } else {
         await dbRun(
-          "UPDATE fb_conversion_logs SET attempts = ?, last_attempt = ?, error = ? WHERE id = ?",
+          `UPDATE fb_conversion_logs
+             SET attempts = ?, last_attempt = ?, error = ?
+             WHERE id = ?`,
           [
             result.attempts,
             now,
@@ -912,11 +879,11 @@ setInterval(async () => {
             log.id
           ]
         );
-        console.warn(`Retry pending for donation id ${donationRow.id}`);
+        console.warn(`[Worker] Still pending. Donation ID: ${donationRow.id}`);
       }
     }
   } catch (err) {
-    console.error("Error processing pending FB conversions:", err);
+    console.error("[Worker] Error processing pending FB conversions:", err);
   }
 }, 60000);
 
@@ -924,23 +891,23 @@ setInterval(async () => {
 // ERROR HANDLING MIDDLEWARE
 // ------------------------------------------------------
 app.use((err, req, res, next) => {
-  console.error('Unhandled error in middleware:', err);
+  console.error('[Global] Unhandled error in middleware:', err);
   res.status(500).json({ error: 'An internal server error occurred.' });
 });
 
 // ------------------------------------------------------
 // GLOBAL PROCESS ERROR HANDLERS
 // ------------------------------------------------------
-process.on('unhandledRejection', (reason, promise) => {
-  console.error('Unhandled Rejection:', reason);
+process.on('unhandledRejection', (reason) => {
+  console.error('[Global] Unhandled Rejection:', reason);
 });
 process.on('uncaughtException', (err) => {
-  console.error('Uncaught Exception:', err);
+  console.error('[Global] Uncaught Exception:', err);
 });
 
 // ------------------------------------------------------
 // START THE SERVER
 // ------------------------------------------------------
 app.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
+  console.log(`[Server] Running on port ${PORT}`);
 });
