@@ -32,9 +32,9 @@ const locationId  = process.env.SQUARE_LOCATION_ID || ''; // Make sure it's set!
 // ------------------------------------------------------
 // ENVIRONMENT VARIABLES (FACEBOOK, ETC.)
 // ------------------------------------------------------
-const FACEBOOK_PIXEL_ID       = process.env.FACEBOOK_PIXEL_ID       || '1200226101753260';
-const FACEBOOK_ACCESS_TOKEN   = process.env.FACEBOOK_ACCESS_TOKEN   || '';
-const FACEBOOK_TEST_EVENT_CODE= process.env.FACEBOOK_TEST_EVENT_CODE|| '';
+const FACEBOOK_PIXEL_ID        = process.env.FACEBOOK_PIXEL_ID        || '1200226101753260';
+const FACEBOOK_ACCESS_TOKEN    = process.env.FACEBOOK_ACCESS_TOKEN    || '';
+const FACEBOOK_TEST_EVENT_CODE = process.env.FACEBOOK_TEST_EVENT_CODE || '';
 
 const SESSION_SECRET = process.env.SESSION_SECRET || 'somesecret';
 const PORT = process.env.PORT || 3000;
@@ -110,7 +110,7 @@ db.serialize(() => {
       event_id TEXT,
       fbp TEXT,
       fbc TEXT,
-      landing_page_url TEXT, 
+      landing_page_url TEXT,
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP
     )
   `);
@@ -287,7 +287,7 @@ app.post('/api/store-fb-data', async (req, res) => {
     // Generate fbp if missing
     if (!fbp) {
       const timestamp = Math.floor(Date.now() / 1000);
-      const randomPart= Math.floor(Math.random() * 1e16);
+      const randomPart = Math.floor(Math.random() * 1e16);
       fbp = `fb.1.${timestamp}.${randomPart}`;
       console.log('[store-fb-data] Generated new fbp:', fbp);
     }
@@ -906,8 +906,14 @@ process.on('uncaughtException', (err) => {
 });
 
 // ------------------------------------------------------
-// START THE SERVER
+// START THE SERVER (with added error handling so it won't crash)
 // ------------------------------------------------------
-app.listen(PORT, () => {
+const server = app.listen(PORT, () => {
   console.log(`[Server] Running on port ${PORT}`);
+});
+
+// This ensures the server does not crash on errors it encounters
+server.on('error', (err) => {
+  console.error('[Server] Error encountered:', err);
+  // We do not exit the process, so the app remains running.
 });
