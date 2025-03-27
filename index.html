@@ -12339,7 +12339,13 @@ document.addEventListener("DOMContentLoaded", function() {
                           data-element-id="btn_donations"
                           data-analytic-event-listener="true"
                         >
-                          (2,530)
+                         <script>
+  // Assume this value comes from your calculation, e.g., currentDonors computed earlier
+  var currentDonors = 2930; // Replace with your actual computed value if needed
+  
+  // Format the number with commas and display it
+  document.getElementById("donorCountDisplay").textContent = currentDonors.toLocaleString();
+</script>(2,530)
                         </button>
                       </h2>
                       
