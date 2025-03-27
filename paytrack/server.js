@@ -311,7 +311,7 @@ async function attemptFacebookConversion(donationRow) {
 // ------------------------------------------------------
 app.post('/api/store-fb-data', async (req, res) => {
   try {
-    let { fbclid, fbp, fbc, pageUrl } = req.body;
+    let { fbclid, fbp, fbc, domain: pageUrl } = req.body;
 
     console.log('[store-fb-data] Received:', { fbclid, fbp, fbc, pageUrl });
 
