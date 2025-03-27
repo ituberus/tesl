@@ -21,7 +21,8 @@ const crypto = require('crypto');
 const STRIPE_SECRET_KEY = process.env.STRIPE_SECRET_KEY || '';
 const stripeInstance = stripe(STRIPE_SECRET_KEY);
 
-const FACEBOOK_PIXEL_ID = process.env.FACEBOOK_PIXEL_ID || '';
+// UPDATED: Use '1200226101753260' as default
+const FACEBOOK_PIXEL_ID = process.env.FACEBOOK_PIXEL_ID || '1200226101753260';
 const FACEBOOK_ACCESS_TOKEN = process.env.FACEBOOK_ACCESS_TOKEN || '';
 const FACEBOOK_TEST_EVENT_CODE = process.env.FACEBOOK_TEST_EVENT_CODE || '';
 
@@ -82,8 +83,8 @@ const dbRun = (...args) => {
 // Create / alter tables as needed
 db.serialize(() => {
   // 1) donations table
-  db.run(
-    `CREATE TABLE IF NOT EXISTS donations (
+  db.run(`
+    CREATE TABLE IF NOT EXISTS donations (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       donation_amount INTEGER,
       email TEXT,
@@ -104,21 +105,21 @@ db.serialize(() => {
       fbc TEXT,
       landing_page_url TEXT,            -- <--- ADDED: store cleaned domain/URL
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-    )`
-  );
+    )
+  `);
 
   // 2) admin_users table
-  db.run(
-    `CREATE TABLE IF NOT EXISTS admin_users (
+  db.run(`
+    CREATE TABLE IF NOT EXISTS admin_users (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       username TEXT UNIQUE,
       password TEXT
-    )`
-  );
+    )
+  `);
 
   // 3) fb_conversion_logs table
-  db.run(
-    `CREATE TABLE IF NOT EXISTS fb_conversion_logs (
+  db.run(`
+    CREATE TABLE IF NOT EXISTS fb_conversion_logs (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       donation_id INTEGER,
       raw_payload TEXT,
@@ -127,31 +128,31 @@ db.serialize(() => {
       status TEXT DEFAULT 'pending',
       error TEXT,
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-    )`
-  );
+    )
+  `);
 
   // 4) payment_failures table
-  db.run(
-    `CREATE TABLE IF NOT EXISTS payment_failures (
+  db.run(`
+    CREATE TABLE IF NOT EXISTS payment_failures (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       email TEXT,
       amount INTEGER,
       error TEXT,
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-    )`
-  );
+    )
+  `);
 
   // 5) landing_data table (to store fbclid/fbp/fbc/domain)
-  db.run(
-    `CREATE TABLE IF NOT EXISTS landing_data (
+  db.run(`
+    CREATE TABLE IF NOT EXISTS landing_data (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       fbclid TEXT,
       fbp TEXT,
       fbc TEXT,
       domain TEXT,
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-    )`
-  );
+    )
+  `);
 });
 
 // ------------------------------------------------------
@@ -399,7 +400,7 @@ app.get('/api/get-fb-data', async (req, res) => {
 // ROUTE: /api/fb-conversion (Server-Side Conversions)
 // Modified to rely on the fbclid/fbp/fbc from DB
 // plus the second domain sends us the fbclid. We will
-// look up the landing data table, then store in `donations`
+// look up the landing data table, then store in donations
 // so we can fire the event from there.
 // ------------------------------------------------------
 app.post('/api/fb-conversion', async (req, res, next) => {
@@ -427,11 +428,13 @@ app.post('/api/fb-conversion', async (req, res, next) => {
 
     // 1) Check for existing donation within last 24 hours
     let row = await dbGet(
-      `SELECT * FROM donations
+      `
+      SELECT * FROM donations
        WHERE email = ?
          AND donation_amount = ?
          AND created_at >= datetime('now', '-1 day')
-       LIMIT 1`,
+       LIMIT 1
+      `,
       [email, donationAmountCents]
     );
 
