@@ -1,0 +1,25 @@
+{
+  "name": "square-donation-integration",
+  "version": "1.0.0",
+  "description": "Example of integrating Square Web Payments SDK with a custom donation form.",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "bcrypt": "^5.1.1",
+    "body-parser": "^1.20.3",
+    "connect-sqlite3": "^0.9.16",
+    "cookie-parser": "^1.4.7",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.7",
+    "express": "^4.21.2",
+    "express-session": "^1.18.1",
+    "install": "^0.13.0",
+    "morgan": "^1.10.0",
+    "node-fetch": "^3.3.2",
+    "npm": "^11.4.2",
+    "sqlite3": "^5.1.7",
+    "square": "^17.3.0"
+  }
+}

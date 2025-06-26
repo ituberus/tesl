@@ -1,0 +1,578 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Donation Form</title>
+  <!-- Square Web Payments SDK (Sandbox) -->
+  <!-- For Production, use: https://web.squarecdn.com/v1/square.js -->
+  <script type="text/javascript" src="https://sandbox.web.squarecdn.com/v1/square.js"></script>
+
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      max-width: 800px;
+      margin: 0 auto;
+      padding: 20px;
+    }
+    h2 {
+      color: #333;
+      font-size: 24px;
+      margin-bottom: 20px;
+    }
+    .donation-options {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-bottom: 20px;
+    }
+    .donation-option {
+      border: 1px solid #ccc;
+      border-radius: 8px;
+      padding: 15px 10px;
+      min-width: 100px;
+      text-align: center;
+      cursor: pointer;
+      position: relative;
+      background-color: white;
+    }
+    .donation-option.selected {
+      border: 2px solid #00A651;
+    }
+    .donation-option span {
+      font-weight: bold;
+      font-size: 18px;
+    }
+    .suggested-badge {
+      position: absolute;
+      top: -10px;
+      left: 50%;
+      transform: translateX(-50%);
+      background-color: #00A651;
+      color: white;
+      font-size: 12px;
+      padding: 2px 10px;
+      border-radius: 20px;
+    }
+    .payment-method {
+      margin-top: 40px;
+      margin-bottom: 30px;
+    }
+    .payment-card {
+      border: 1px solid #ccc;
+      border-radius: 8px;
+      padding: 20px;
+      margin-top: 10px;
+    }
+    .card-header {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 20px;
+    }
+    .radio-circle {
+      width: 20px;
+      height: 20px;
+      border: 2px solid #00A651;
+      border-radius: 50%;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+    }
+    .radio-inner {
+      width: 12px;
+      height: 12px;
+      background-color: #00A651;
+      border-radius: 50%;
+    }
+    .card-icon {
+      width: 30px;
+      height: 20px;
+      background-color: #ddd;
+      border-radius: 4px;
+    }
+    input[type="text"],
+    input[type="email"] {
+      width: 100%;
+      padding: 12px;
+      margin-bottom: 15px;
+      border: 1px solid #ccc;
+      border-radius: 8px;
+      font-size: 16px;
+      box-sizing: border-box;
+    }
+    .row {
+      display: flex;
+      gap: 15px;
+    }
+    .col {
+      flex: 1;
+    }
+    .checkbox-container {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 15px;
+    }
+    .checkbox {
+      width: 20px;
+      height: 20px;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      cursor: pointer;
+    }
+    .checkbox.checked {
+      border-color: #00A651;
+    }
+    .checkbox.checked:after {
+      content: "✓";
+      color: #00A651;
+    }
+    .dropdown {
+      position: relative;
+    }
+    .dropdown-arrow {
+      position: absolute;
+      right: 15px;
+      top: 50%;
+      transform: translateY(-50%);
+      width: 0;
+      height: 0;
+      border-left: 6px solid transparent;
+      border-right: 6px solid transparent;
+      border-top: 6px solid #666;
+      pointer-events: none;
+    }
+    .summary {
+      margin-top: 40px;
+      border-top: 1px solid #eee;
+      padding-top: 20px;
+    }
+    .summary-row {
+      display: flex;
+      justify-content: space-between;
+      margin-bottom: 10px;
+      font-size: 18px;
+    }
+    .donate-button {
+      width: 100%;
+      background-color: #00A651;
+      color: white;
+      border: none;
+      border-radius: 8px;
+      font-size: 18px;
+      padding: 15px;
+      cursor: pointer;
+      margin-top: 20px;
+    }
+    .country-dropdown {
+      display: none;
+      position: absolute;
+      top: 100%;
+      left: 0;
+      width: 100%;
+      border: 1px solid #ccc;
+      border-radius: 8px;
+      background-color: white;
+      z-index: 10;
+      box-sizing: border-box;
+    }
+    .country-option {
+      padding: 10px;
+      cursor: pointer;
+    }
+    .country-option:hover {
+      background-color: #f5f5f5;
+    }
+    /* Unified Card Field container */
+    .sq-card-field {
+      margin-bottom: 15px;
+      /* Optionally, adjust height or layout to mimic a two-line look */
+    }
+  </style>
+</head>
+<body>
+  <h2>Enter your donation</h2>
+  <div class="donation-options">
+    <div class="donation-option" data-value="25" onclick="selectDonation(this)">
+      <span>$25</span>
+    </div>
+    <div class="donation-option" data-value="50" onclick="selectDonation(this)">
+      <span>$50</span>
+    </div>
+    <div class="donation-option" data-value="100" onclick="selectDonation(this)">
+      <span>$100</span>
+      <div class="suggested-badge">SUGGESTED</div>
+    </div>
+    <div class="donation-option" data-value="300" onclick="selectDonation(this)">
+      <span>$300</span>
+    </div>
+    <div class="donation-option" data-value="500" onclick="selectDonation(this)">
+      <span>$500</span>
+    </div>
+    <div class="donation-option" data-value="750" onclick="selectDonation(this)">
+      <span>$750</span>
+    </div>
+  </div>
+  <div class="donation-options">
+    <div class="donation-option" data-value="1000" onclick="selectDonation(this)">
+      <span>$1000</span>
+    </div>
+    <div class="donation-option" data-value="1500" onclick="selectDonation(this)">
+      <span>$1500</span>
+    </div>
+    <div class="donation-option" data-value="2000" onclick="selectDonation(this)">
+      <span>$2000</span>
+    </div>
+  </div>
+
+  <div class="payment-method">
+    <h2>Payment method</h2>
+    <div class="payment-card">
+      <div class="card-header">
+        <div class="radio-circle">
+          <div class="radio-inner"></div>
+        </div>
+        <div class="card-icon"></div>
+        <span>Credit or debit card</span>
+      </div>
+
+      <!-- Donation form -->
+      <form id="donationForm" action="/process-payment" method="POST">
+        <!-- Email -->
+        <input type="email" id="email" placeholder="Email address" />
+
+        <!-- Name / Surname -->
+        <div class="row">
+          <div class="col">
+            <input type="text" id="firstName" placeholder="Name" />
+          </div>
+          <div class="col">
+            <input type="text" id="lastName" placeholder="Surname" />
+          </div>
+        </div>
+
+        <!-- Billing name checkbox (optional) -->
+        <div class="checkbox-container">
+          <div class="checkbox" id="billingNameCheckbox" onclick="toggleBillingName()"></div>
+          <span>Use as billing name</span>
+        </div>
+
+        <!-- Name on card (optional) -->
+        <input type="text" id="nameOnCard" placeholder="Name on card" />
+
+        <!-- Country (full width) -->
+        <input type="text" id="country" placeholder="Country" readonly onclick="toggleCountryDropdown()" />
+        <input type="hidden" id="countryCode" value="" />
+        <div class="dropdown-arrow"></div>
+        <div class="country-dropdown" id="countryDropdown">
+          <div class="country-option" data-code="US" onclick="selectCountry(this)">United States</div>
+          <div class="country-option" data-code="CA" onclick="selectCountry(this)">Canada</div>
+          <div class="country-option" data-code="UK" onclick="selectCountry(this)">United Kingdom</div>
+        </div>
+
+        <!-- SQUARE FIELD: Unified Card Element -->
+        <div class="sq-card-field" id="sq-card"></div>
+
+        <!-- Hidden fields -->
+        <input type="hidden" name="donationAmount" id="donationAmountInput" value="0" />
+        <input type="hidden" name="cardToken" id="cardTokenInput" value="" />
+      </form>
+    </div>
+  </div>
+
+  <div class="summary">
+    <h2>Your donation</h2>
+    <div class="summary-row">
+      <span>Your donation</span>
+      <span id="donationAmountLabel">$0.00</span>
+    </div>
+    <div class="summary-row" style="padding-bottom: 10px; border-bottom: 1px solid #eee;">
+      <span>Total due today</span>
+      <span id="totalAmountLabel">$0.00</span>
+    </div>
+  </div>
+
+  <button class="donate-button" id="donateButton">Donate now</button>
+
+  <script>
+    /******************************************************************
+     * PART 1: Donation Amount Selection
+     ******************************************************************/
+    let selectedAmount = 0;
+    let isBillingNameChecked = false;
+
+    function selectDonation(element) {
+      document.querySelectorAll('.donation-option').forEach(option => {
+        option.classList.remove('selected');
+      });
+      element.classList.add('selected');
+      selectedAmount = parseInt(element.getAttribute('data-value'));
+      updateDonationSummary();
+    }
+
+    function updateDonationSummary() {
+      const formattedAmount = '$' + selectedAmount.toFixed(2);
+      document.getElementById('donationAmountLabel').textContent = formattedAmount;
+      document.getElementById('totalAmountLabel').textContent = formattedAmount;
+      document.getElementById('donationAmountInput').value = selectedAmount.toString();
+    }
+
+    function toggleBillingName() {
+      const checkbox = document.getElementById('billingNameCheckbox');
+      isBillingNameChecked = !isBillingNameChecked;
+      if (isBillingNameChecked) {
+        checkbox.classList.add('checked');
+        updateNameOnCard();
+      } else {
+        checkbox.classList.remove('checked');
+      }
+    }
+
+    function updateNameOnCard() {
+      if (isBillingNameChecked) {
+        const firstName = document.getElementById('firstName').value;
+        const lastName = document.getElementById('lastName').value;
+        const fullName = (firstName + ' ' + lastName).trim();
+        document.getElementById('nameOnCard').value = fullName;
+      }
+    }
+
+    document.getElementById('firstName').addEventListener('input', function() {
+      if (isBillingNameChecked) updateNameOnCard();
+    });
+    document.getElementById('lastName').addEventListener('input', function() {
+      if (isBillingNameChecked) updateNameOnCard();
+    });
+
+    /******************************************************************
+     * PART 2: Country Dropdown
+     ******************************************************************/
+    function toggleCountryDropdown() {
+      const dropdown = document.getElementById('countryDropdown');
+      dropdown.style.display = dropdown.style.display === 'block' ? 'none' : 'block';
+    }
+    function selectCountry(element) {
+      const countryName = element.textContent;
+      const countryCode = element.getAttribute('data-code');
+      document.getElementById('country').value = countryName;
+      document.getElementById('countryCode').value = countryCode;
+      document.getElementById('countryDropdown').style.display = 'none';
+    }
+    document.addEventListener('click', function(event) {
+      const dropdown = document.getElementById('countryDropdown');
+      const countryInput = document.getElementById('country');
+      if (event.target !== countryInput && dropdown.style.display === 'block') {
+        dropdown.style.display = 'none';
+      }
+    });
+
+    /******************************************************************
+     * PART 3: Square Web Payments SDK: Unified Card Field
+     ******************************************************************/
+    let card; // Unified Card component
+    const appId = 'sandbox-sq0idb-w2bowoHYwcgPS4nGmztgOA';
+    const locationId = 'LC4V03BNAPRKK';
+
+    document.addEventListener('DOMContentLoaded', async function() {
+      if (!window.Square) {
+        alert("Square.js failed to load properly.");
+        return;
+      }
+      const payments = window.Square.payments(appId, locationId);
+      try {
+        const fieldStyles = {
+          '.input-container': {
+            borderColor: '#ccc',
+            borderWidth: '1px',
+            borderRadius: '8px'
+          },
+          '.input-container.is-focus': {
+            borderColor: '#00A651'
+          },
+          '.input-container.is-error': {
+            borderColor: 'red'
+          },
+          input: {
+            backgroundColor: '#fff',
+            color: '#000',
+            fontFamily: 'Arial, sans-serif',
+            fontSize: '16px',
+            fontWeight: '400'
+          },
+          'input.is-error': {
+            color: 'red'
+          },
+          'input::placeholder': {
+            color: '#999'
+          }
+        };
+
+        // Create the unified Card component
+        card = await payments.card({ style: fieldStyles });
+        await card.attach('#sq-card');
+      } catch (e) {
+        console.error("Error initializing Square card field", e);
+        alert("Failed to initialize card payment. Please refresh.");
+        return;
+      }
+    });
+
+    /******************************************************************
+     * PART 4: Donation Submission & Tokenization
+     ******************************************************************/
+    const donateBtn = document.getElementById('donateButton');
+    donateBtn.addEventListener('click', async function() {
+      if (selectedAmount <= 0) {
+        alert("Please select a donation amount.");
+        return;
+      }
+      if (!card) {
+        alert("Square card field not ready. Please try again.");
+        return;
+      }
+      try {
+        const result = await card.tokenize();
+        if (result.status === 'OK') {
+          const token = result.token;
+          document.getElementById('cardTokenInput').value = token;
+          document.getElementById('donationForm').submit();
+        } else {
+          console.error("Tokenization failed", result.errors);
+          alert("Card information is invalid or incomplete. Please check and try again.");
+        }
+      } catch (tokenError) {
+        console.error("Token error:", tokenError);
+        alert("Payment error. Please verify card details or try again later.");
+      }
+    });
+  </script>
+</body>
+</html>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+// server.js
+require('dotenv').config(); // Load .env
+const express = require('express');
+const { randomUUID } = require('crypto');
+const { Client, Environment, ApiError } = require('square'); // Square SDK
+
+const app = express();
+
+// 1) Serve static files (index.html, thanks.html, etc.) from the "public" folder
+app.use(express.static('public'));
+
+// 2) Parse request bodies
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
+
+// 3) Configure the Square client
+const squareClient = new Client({
+  environment:
+    process.env.NODE_ENV === 'production'
+      ? Environment.Production
+      : Environment.Sandbox,
+  accessToken: process.env.SQUARE_ACCESS_TOKEN,
+});
+
+const paymentsApi = squareClient.paymentsApi;
+const locationId = process.env.SQUARE_LOCATION_ID;
+
+// 4) Payment processing route
+app.post('/process-payment', async (req, res) => {
+  try {
+    // These come from the form submission (see index.html for how we attach them)
+    const { cardToken, donationAmount, zip } = req.body;
+    if (!cardToken) {
+      return res.status(400).send('Missing card token (nonce).');
+    }
+
+    // Generate a unique idempotency key for this transaction
+    const idempotencyKey = randomUUID();
+
+    // Convert the donationAmount to the smallest currency unit (e.g., cents)
+    // For example, if donationAmount = "100", that means $100 => 10000 cents.
+    // Validate/parse on the server to prevent tampering.
+    let amount = parseFloat(donationAmount);
+    if (isNaN(amount) || amount <= 0) {
+      amount = 50.0; // fallback, or handle error. For example, set a default $50 if invalid
+    }
+    const amountInCents = Math.round(amount * 100);
+
+    // Build the payment request
+    const paymentRequest = {
+      idempotencyKey,
+      locationId,
+      sourceId: cardToken, // The secure nonce from Square
+      amountMoney: {
+        amount: amountInCents, // integer in cents
+        currency: 'USD',
+      },
+      // Pass the ZIP for Address Verification (AVS)
+      verificationDetails: {
+        billingPostalCode: zip || '',
+      },
+    };
+
+    // Call Square Payments API to create the payment
+    const { result } = await paymentsApi.createPayment(paymentRequest);
+    const payment = result.payment;
+
+    // If successful, log and redirect to thanks.html
+    console.log('Payment Success:', payment);
+    console.log(`Payment ID: ${payment.id}, Status: ${payment.status}`);
+    return res.redirect(303, '/thanks.html');
+  } catch (error) {
+    // Handle potential errors returned by Square
+    console.error('Payment Error:', error);
+
+    if (error instanceof ApiError) {
+      // The error is a Square API error with specific details
+      console.error('Square API Errors:', error.result);
+    }
+
+    // Return a 500 or an error page
+    return res
+      .status(500)
+      .send('Payment processing failed. Please try again later.');
+  }
+});
+
+// Start the server
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, () => {
+  console.log(`Server listening on http://localhost:${PORT}`);
+});
